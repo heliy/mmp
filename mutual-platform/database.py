@@ -42,9 +42,4 @@ def query_db(query, args=(), one=False):
     rv = cur.fetchall()
     return (rv[0] if rv else None) if one else rv
 
-def get_type_id(typename):
-    ''' look up the type_id for a typename. '''
-    rv = query_db('''select type_id from types where typename = ?''',
-                  [typename], one=True)
-    return rv[0] if rv else None
 

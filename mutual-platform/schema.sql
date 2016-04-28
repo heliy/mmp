@@ -21,17 +21,19 @@ create table tasks(
     end_date integer default -1,
 )
 
-drop table if exists types;
-create table types(
-    type_id integer primary key autoincrement,
-    typename text not null,
+drop table if exists tags;
+create table tags(
+    tag_id integer primary key autoincrement,
+    tagname text not null,
+    creater integer default -1;
+    create_time integer default -1;
 )
 
 drop table if exists ttl;
 create table ttl(
     task_id integer not null,
-    type_id integer not null,
-    primary key (type_id, task_id),
+    tag_id integer not null,
+    primary key (tag_id, task_id),
 )
 
 drop table if exists tub;
