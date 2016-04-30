@@ -3,7 +3,7 @@
 import time
 
 from database import get_db, query_db
-from config import RECIVED, COMPLETE, ABORT
+from config import RECIVED, COMPLETE, ABORT, RAISED
 
 class Task(object):
     def __init__(self, task_id=None, user=None):
@@ -234,6 +234,34 @@ class User(object):
     def statu_info(self):
         pass
 
+class Event(object):
+    def __init__(self, event_id=None, user_id=None, task_id=None, another_id=None, act=None):
+        if event_id is None:
+            self.event_id = self.create_db(user_id, task_id, another_id, act)
+        else:
+            self.event_id = event_id
+        self.load_db()
+
+    def create_db(self, user_id, task_id, another_id, act):
+        db = get_db()
+        created_time = int(time.time())
+        db.excute('''insert into events (user_id, task_id, another_id, act, init_date, statu)
+                  values (?, ?, ?, ?, ?, ?)''', [user_id, another_id, act, init_date, RAISED])
+        db.commit()
+        rv = query_db('''select event_id from events where user_id = ? and task_id = ?
+                      and another_id = ? and act = ? and init_data = ?''',
+                      [user_id, another_id, act, init_date], one=True)
+        return rv[0]
+
+    def load_db(self):
+        rv = query_db('''select * from events where event_id = ?''',
+                      [self.event_id], one=True)
+        [_, self.user_id, self.task_id, self.another_id, self.act, self.init_date,
+             self.statu] = rv
+
+    def update_db(self):
+        
+    
 def get_type_id(typename):
     ''' look up the type_id for a typename. '''
     rv = query_db('''select type_id from types where typename = ?''',

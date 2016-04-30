@@ -44,3 +44,14 @@ create table tub(
     score integer default -1,
     primary key (user_id, task_id),
 )
+
+drop table if exists events;
+create table events(
+    event_id integer primary key autoincrement,
+    user_id integer not null,
+    task_id integer not null,
+    another_id integer not null,
+    act integer not null,
+    init_date integer not null,
+    statu integer not null,
+)

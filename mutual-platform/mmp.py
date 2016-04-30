@@ -10,8 +10,8 @@
    :license:
 """
 
-from flask import Flask, request, session, redirect
-from flask import render_template, 
+from flask import Flask, request, session, redirect, g
+from flask import render_template
 
 app = Flask(__name__)
 
@@ -25,7 +25,7 @@ def welcome():
     if g.user:
         return render_template('welcome.html', messages=welcome(session['user_id']))
     else:
-        return render_template('index.html', messages=[])
+    return render_template('index.html')
 
 @app.route('/people/<username>')
 def user_info(username):
@@ -83,7 +83,7 @@ def tag_info(tag_id):
         return redirect(url_for('welcome'))
     return render_template('tag.html', messages=tag(tag_id))
 
-@app.route('/tags'):
+@app.route('/tags')
 def all_tags():
     if not g.user:
         return redirect(url_for('welcome'))
@@ -113,6 +113,10 @@ def login():
 def register():
     pass
 
-@app.route('/logout'):
+@app.route('/logout')
 def logout():
     pass
+
+if __name__ == "__main__":
+    app.debug = True
+    app.run()
