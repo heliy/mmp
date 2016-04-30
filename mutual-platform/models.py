@@ -2,8 +2,17 @@
 
 import time
 
+from werkzeug.security import check_password_hash
+
 from database import get_db, query_db
 from config import RECIVED, COMPLETE, ABORT, RAISED
+
+__all__ = [
+    get_user,
+    get_user_id_from_phone,
+    get_user_id_from_name,
+    register_user,
+    ]
 
 class Task(object):
     def __init__(self, task_id=None, user=None):
@@ -181,15 +190,15 @@ class User(object):
         ''' load user from users '''
         rv = query_db('''select * from users where user_id = ?''',
                       [self.user_id], one=True)
-        [_, self.username, self.phone_no, self.pw_hash, self.email, self.address] = rv
+        [_, self.username, self.phone_no, self.pw_hash, self.address] = rv
 
     def update_db(self):
         ''' update user in users '''
         db = get_db()
         db.execute('''update users set username = ?, phone_no = ?, pw_hash = ?,
-                   email = ?, address = ? where user_id = ?''',
+                   address = ? where user_id = ?''',
                    [self.user_id, self.user_name, self.phone_no, self.pw_hash,
-                    self.email, self.address])
+                    self.address])
         db.commit()
 
     def delete_db(self):
@@ -197,6 +206,9 @@ class User(object):
         db = get_db()
         db.execute('''delete from users where user_id = ?''', [self.user_id])
         db.commit()
+
+    def check_password(self, password):
+        return check_password_hash(self.pw_hash, password)
 
     def post_task(self, title, content, maxp, public_date, begin_date, end_date, tags):
         task = Task(user=self)
@@ -260,13 +272,44 @@ class Event(object):
              self.statu] = rv
 
     def update_db(self):
-        
+        db = get_db()
+        db.execute('''update events set statu = ? where event_id = ?''',
+                   [self.statu, self.event_id])
+        db.commit()
+
+    def delete_db(self):
+        db = get_db()
+        db.execute('''delete from events where event_id = ?''',
+                   [self.satu, self.event_id])
     
 def get_type_id(typename):
     ''' look up the type_id for a typename. '''
     rv = query_db('''select type_id from types where typename = ?''',
                   [typename], one=True)
     return rv[0] if rv else None
+
+def get_user(user_id, from_term='user_id'):
+    ''' look up the user_id '''
+    rv = query_db('select * from users where % = ? ' % (from_term), [user_id], one=True)
+    return User(rv[0]) if rv else None
+
+def get_user_id_from_phone(phone_no):
+    ''' look up the user_id for a phone number '''
+    rv = query_db('''select user_id from users where phone_no = ?''', [phone], one=True)
+    return rv[0] if rv else None
+
+def get_user_id_from_name(username):
+    ''' look up the user_id for a username '''
+    rv = query_db('''select user_id from users where username = ?''', [usename], one=True)
+    return rv[0] if rv else None
+
+def register_user(phone_no, username, user_id, address, pw_hash):
+    user = User(user_id, username, True)
+    user.phone_no = phone_no
+    user.pw_hash = pw_hash
+    user.address = address
+    user.update_db()
+    return user
 
 def welcome(user_id):
     pass

@@ -12,6 +12,9 @@
 
 from flask import Flask, request, session, redirect, g
 from flask import render_template
+from werkzeug.security import generate_password_hash
+
+from models import *
 
 app = Flask(__name__)
 
@@ -25,7 +28,7 @@ def welcome():
     if g.user:
         return render_template('welcome.html', messages=welcome(session['user_id']))
     else:
-    return render_template('index.html')
+        return render_template('index.html')
 
 @app.route('/people/<username>')
 def user_info(username):
@@ -107,15 +110,80 @@ def login():
     if g.user:
         return redirect(url_for('welcome'))
     error = None
-    
+    if request.method == 'POST':
+        user = get_user(request.form['username'], 'username')
+        if user is None:
+            error = 'Invalid username'
+        elif not user.check_password(request.form['password']):
+            error = 'Invalid password'
+        else:
+            flash('You were logged in')
+            session['user_id'] = user.user_id
+            return redirect(url_for('welcome'))
+    return render_template('login.html', error=error)
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    pass
+@app.route('/register/phone', methods=['GET', 'POST'])
+def register_phone():
+    ''' registers the user, 1st step, confrom phone number '''
+    if g.user:
+        return redirect(url_for('welcome'))
+    error = None
+    if request.method == 'POST':
+        if not request.form['telephone']:
+            error = 'You have to enter a telephone number'
+        elif get_user_id_from_phone(request.form['telephone']) is not None:
+            error = 'The telephone number is already regisitered'
+        else:
+            session['telephone'] = request.form['telephone']
+            return redirect(url_for('register_valid'))
+    return render_template('register_phone.html', error=error)
+
+@app.route('/register/valid', method=['GET', 'POST']):
+def register_valid():
+    ''' registers the user, 2nd step, validate phone number '''
+    if g.user:
+        return redirect(url_for('welcome'))
+    if request.method == 'POST':
+        # TODO
+        return redirect(url_for('register_info'))
+    return render_template('register_valid.html', messages=[session['telephone']])
+
+@app.route('/register/info', method=['GET', 'POST'])
+def register_info():
+    if g.user:
+        return redirect(url_for('welcome'))
+    error = None
+    if request.method == 'POST':
+        if not request.form['username']:
+            error = 'You have to enter a username'
+        elif not request.form['user_id']:
+            error = 'You have to enter your student number'
+        elif not request.form['password']:
+            error = 'You have to enter a password'
+        elif not request.form['address']:
+            error = 'You have to enter your address'
+        elif request.form['password'] != request.form['password2']:
+            error = 'The two passwords do not match'
+        elif get_user(request.form['user_id']) is not None:
+            error = 'The student number is already taken'
+        elif get_user_id_from_name(request.form['username']) is not None:
+            error = 'The username is already taken'
+        else:
+            register_user(session['telephone'], request.form['username'],
+                          request.form['user_id'], request.form['address'],
+                          generate_password_hash(request.form['password']))
+            session.pop('telephone', None)
+            flash('You were successfully registered and can login now')
+            return redirect(url_for('login'))
+    return render_template('register_info.html', messages=[session['telephone']],
+                           error=error)
 
 @app.route('/logout')
 def logout():
-    pass
+    """Logs the user out."""
+    flash('You were logged out')
+    session.pop('user_id', None)
+    return redirect(url_for('welcome'))
 
 if __name__ == "__main__":
     app.debug = True

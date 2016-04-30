@@ -4,7 +4,7 @@ create table users(
     username text not null,
     phone_no integer default -1,
     pw_hash text default "empty",
-    email text default "empty",
+    -- email text default "empty",
     address text default "empty",
 );
 
