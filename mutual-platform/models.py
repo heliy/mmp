@@ -12,7 +12,11 @@ __all__ = [
     get_user_id_from_phone,
     get_user_id_from_name,
     register_user,
+    welcome,
     ]
+
+STUDENT = 1
+STAFF = 2
 
 class Task(object):
     def __init__(self, task_id=None, user=None):
@@ -279,8 +283,40 @@ class Event(object):
 
     def delete_db(self):
         db = get_db()
-        db.execute('''delete from events where event_id = ?''',
-                   [self.satu, self.event_id])
+        db.execute('''delete from events where event_id = ?''', [self.event_id])
+
+class Notice(object):
+    def __init__(self, notice_id=None, user_id=None, info=None):
+        if notice_id is None:
+            self.notice_id = self.create_id(user_id, info)
+        else:
+            self.notice_id = notice_id
+        self.load_db()
+
+    def create_db(self, user_id, info):
+        db = get_db()
+        created_time = int(time.time())
+        db.execute('''insert into notices (user_id, release_date, info) values (?, ?, ?)''',
+                   [user_id, created_time, release_date])
+        db.commit()
+        rv = query_db('''select notice_id from notices where user_id = ? and release_date = ?''',
+                      [user_id, created_time], one=True)
+        return rv[0]
+
+    def load_db(self):
+        rv = query_db('''select * from notices where notice_id = ? ''', [notice_id], one=True)
+        [_, self.user_id, self.release_date, self.info] = rv
+
+    def update_db(self):
+        db = get_db()
+        db.execute('''update notices set user_id = ?, release_dat = ? info = ?
+                   where notice_id = ?''', [self.user_id, self.release_date,
+                                            self.info, self.notice_id])
+        db.commit()
+
+    def delete_db(self):
+        db = get_db()
+        db.execute('''delete from notices where notice_id = ?''', [self.notice_id])
     
 def get_type_id(typename):
     ''' look up the type_id for a typename. '''
@@ -312,7 +348,10 @@ def register_user(phone_no, username, user_id, address, pw_hash):
     return user
 
 def welcome(user_id):
-    pass
+    user = get_user(user_id)
+
+    
+    events
 
 def user(user_id):
     pass

@@ -11,7 +11,7 @@
 """
 
 from flask import Flask, request, session, redirect, g
-from flask import render_template
+from flask import render_template, flash
 from werkzeug.security import generate_password_hash
 
 from models import *
@@ -26,7 +26,8 @@ def welcome():
     otherwise, it will show simple welcome page.
     '''
     if g.user:
-        return render_template('welcome.html', messages=welcome(session['user_id']))
+        messages = welcome(session['user_id'])
+        return render_template('welcome.html', messages=messages)
     else:
         return render_template('index.html')
 
@@ -119,6 +120,7 @@ def login():
         else:
             flash('You were logged in')
             session['user_id'] = user.user_id
+            session['username'] = user.username
             return redirect(url_for('welcome'))
     return render_template('login.html', error=error)
 

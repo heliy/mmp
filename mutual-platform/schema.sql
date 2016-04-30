@@ -1,6 +1,7 @@
 drop table if exists users;
 create table users(
     user_id integer primary key,
+    user_type integer not null,
     username text not null,
     phone_no integer default -1,
     pw_hash text default "empty",
@@ -54,4 +55,12 @@ create table events(
     act integer not null,
     init_date integer not null,
     statu integer not null,
+)
+
+drop table if exits notices;
+create table notices(
+    notice_id integer primary key autoincrement,
+    user_id integer not null,
+    release_date integer not null,
+    info text default "empty",
 )
