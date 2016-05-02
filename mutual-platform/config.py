@@ -3,8 +3,14 @@
 DATABASE = 'mmp.db'
 DEBUG = True
 
+STUDENT = 1
+STAFF = 2
+
+
 RECIVED = 0
 COMPLETE = 1
 ABORT = 2
 
 RAISED = 1
+
+

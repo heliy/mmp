@@ -7,6 +7,7 @@ create table users(
     pw_hash text default "empty",
     -- email text default "empty",
     address text default "empty",
+    score float default 0.,
 );
 
 drop table if exists tasks;

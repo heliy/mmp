@@ -32,14 +32,33 @@ def welcome():
         return render_template('index.html')
 
 @app.route('/people/<username>')
-def user_info(username):
+def people(username):
     if not g.user:
         return redirect(url_for('welcome'))
-    messages = user(username)
+    messages = account(username)
     if session['username'] == username:
         return render_template("mypage.html", messages=messages)
     else:
         return render_template("yourpage.html", messages=messages)
+
+@app.route('/people/<username>/tasks')
+def people_tasks(username):
+    if not g.user:
+        return redirect(url_for('welcome'))
+    messages = user_tasks(username)
+    if session['username'] == username:
+        return render_template("mytasks.html", messages=messages)
+    else:
+        return render_template("yourtasks.html", messages=messages)    
+
+@app.route('/accounts/<username>', method=['GET', 'POST'])
+def update_account(username):
+    #  TODO -> update accout information
+    if not g.user:
+        return redirect(url_for('welcome'))
+    error = None
+    if request.mehod == 'POST':
+        pass
 
 @app.route('/peoples')
 def all_users():
@@ -51,7 +70,17 @@ def all_users():
 def task_info(task_id):
     if not g.user:
         return redirect(url_for('welcome'))
-    return render_template("task.html", messages=task(task_id))
+    return render_template("task.html", messages=task_info(task_id))
+
+@app.route('/task/<task_id>/tags', methods=['GET', 'POST'])
+def task_tags(task_id):
+    if not g.user:
+        return redirect(url_for('welcome'))
+    error = None
+    if request.methos == 'POST':
+        # TODO
+        return redirect('/task/%s' % task_id)
+    return render_template('task_tags.html')
 
 @app.route('/tasks')
 def all_tasks():
@@ -63,7 +92,7 @@ def all_tasks():
 def notice():
     if not g.user:
         return redirect(url_for('welcome'))
-    return render_template('notice.html', messages=notice(session['user_id']))
+    return render_template('notice.html', messages=notice())
 
 @app.route('/help')
 def help():
@@ -171,7 +200,8 @@ def register_info():
         elif get_user_id_from_name(request.form['username']) is not None:
             error = 'The username is already taken'
         else:
-            register_user(session['telephone'], request.form['username'],
+            # TODO uesr_type
+            register_user(session['telephone'], request.form['username'], 1,
                           request.form['user_id'], request.form['address'],
                           generate_password_hash(request.form['password']))
             session.pop('telephone', None)
