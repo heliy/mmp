@@ -128,6 +128,9 @@ class Tag(object):
                    [tag_id])
         db.commit()
 
+    def tasks(self):
+        pass
+
 class TTl(object):
     def __init__(self, tag, task, create=False):
         self.tag = tag
@@ -200,8 +203,9 @@ class User(object):
         create a new user.
         '''
         db = get_db()
-        db.execute('''insert into users (user_id, user_name) values (?, ?)''',
-                   [self.user_id, username])
+        t = int(time.time())
+        db.execute('''insert into users (user_id, user_name, latest_sign_time)
+                   values (?, ?, ?)''', [self.user_id, username, t])
         db.commit()
 
     def load_db(self):
@@ -209,7 +213,7 @@ class User(object):
         rv = query_db('''select * from users where user_id = ?''',
                       [self.user_id], one=True)
         [_, self.user_type, self.username, self.phone_no, self.pw_hash,
-             self.address, self.score] = rv
+             self.address, self.score, sel.latest] = rv
 
     def update_db(self):
         ''' update user in users '''
@@ -217,7 +221,7 @@ class User(object):
         db.execute('''update users set user_type = ?, username = ?, phone_no = ?,
                    pw_hash = ?, address = ?, score = ? where user_id = ?''',
                    [self.user_type, self.user_id, self.user_name, self.phone_no, self.pw_hash,
-                    self.address, self. score])
+                    self.address, self. score, self.latest])
         db.commit()
 
     def delete_db(self):
@@ -229,18 +233,37 @@ class User(object):
     def check_password(self, password):
         return check_password_hash(self.pw_hash, password)
 
+    def update_login(self):
+        self.latest = int(time.time())
+        self.update_db()
+
     def get_events(self):
         ''' get all events '''
-        rv = query_db('''select task_id from events where user_id = ? order by event_id desc''',
-                      [self.user_id])
-        for task_id in rv:
-            yield Event(task_id)
+        for task in self.created_tasks():
+            rv = query_db('''select task_id from events where task_id = ? order by event_id desc''',
+                          [task.task_id])
+            for task_id in rv:
+                yield Event(task_id)
 
     def unchecked_events(self):
         ''' get unchecked events '''
-        for task in self.get_events:
-            if task.statu == RAISD:
-                yield task
+        for task in self.created_tasks():
+            rv = query_db('''select task_id from events where task_id = ? and
+                             init_data > ? order by event_id desc''',
+                          [task.task_id, self.latest])
+            for event_id in rv:
+                yield Event(task_id), task
+
+    def unchecked_notices(self):
+        rv = query_db('''select notice_id from notices where release_date >= ?
+                         order by notice_id desc''', [self.latest])
+        for notice_id in rv:
+            yield Notice(notice_id)
+
+    def check_event(self, event_id):
+        event = Event(event_id)
+        event.statu = CHECKED
+        event.update_db()
 
     def created_tasks(self):
         ''' get tasks created by user '''
@@ -269,35 +292,37 @@ class User(object):
         task.update_db()
         
         ttls = [TTl(tag, task, True) for tag in tags]
-
         return task, ttls
 
     def receive_task(self, task):
         tub = TUb(self, task, True)
         tub.statu = RECEIVED
         tub.update_db()
-        return tub
+
+        event = Event(user_id = self, task_id=task.task_id, act=RECIEVE)
+        return tub, event
 
     def commit_posted(self, task, helper, score):
         tub = Tub(helper, task)
         tub.score = score
-        tub.statu = COMPLETE
+        tub.statu = COMMIT
         tub.update_db()
-        return tub
+        event = Event(user_id=helper.user_id, task_id=task.task_id, act=COMMIT)
+        return tub, event
 
     def abort_recieved(self, task):
         tub = Tub(self, task)
         tub.statu = ABORT
         tub.update_db()
-        return tub
+        event = Event(user_id=self.user_id, task_id=task.task_id, act=ABORT)
+        return tub, event
 
-    def statu_info(self):
-        pass
+
 
 class Event(object):
-    def __init__(self, event_id=None, user_id=None, task_id=None, another_id=None, act=None):
+    def __init__(self, event_id=None, user_id=None, task_id=None, act=None):
         if event_id is None:
-            self.event_id = self.create_db(user_id, task_id, another_id, act)
+            self.event_id = self.create_db(user_id, task_id, act)
         else:
             self.event_id = event_id
         self.load_db()
@@ -305,19 +330,17 @@ class Event(object):
     def create_db(self, user_id, task_id, another_id, act):
         db = get_db()
         created_time = int(time.time())
-        db.excute('''insert into events (user_id, task_id, another_id, act, init_date, statu)
-                  values (?, ?, ?, ?, ?, ?)''', [user_id, another_id, act, init_date, RAISED])
+        db.excute('''insert into events (user_id, task_id, act, init_date, statu)
+                  values (?, ?, ?, ?, ?, ?)''', [user_id, act, init_date, RAISED])
         db.commit()
         rv = query_db('''select event_id from events where user_id = ? and task_id = ?
-                      and another_id = ? and act = ? and init_data = ?''',
-                      [user_id, another_id, act, init_date], one=True)
+                      and act = ? and init_data = ?''', [user_id, act, init_date], one=True)
         return rv[0]
 
     def load_db(self):
         rv = query_db('''select * from events where event_id = ?''',
                       [self.event_id], one=True)
-        [_, self.user_id, self.task_id, self.another_id, self.act, self.init_date,
-             self.statu] = rv
+        [_, self.user_id, self.task_id, self.act, self.init_date, self.statu] = rv
 
     def update_db(self):
         db = get_db()
@@ -424,11 +447,21 @@ def solved_tasks():
 def get_notices():
     rv = query_db('''select notice_id from notices where ''')
 
+def get_urgents():
+    pass
+
+def get_populars():
+    pass
+
+def get_tags():
+    pass
+
 def welcome(user_id, show_num=5):
     user = get_user(user_id)
     messages = {}
     messages['notice'] = len(user.unchecked_notices(0, show_num))
     messages['event'] = len(user.unchecked_events())
+    user.update_login()
     return messages
 
 def account(username):
@@ -475,20 +508,48 @@ def notices(user_id):
     return messages
 
 def urgents():
-    pass
+    messages = {}
+    messages['urgents'] = list(get_urgents())
+    return messages
 
 def popular_tasks():
-    pass
+    messages = {}
+    messages['populars'] = list(get_populars())
+    return messages
 
-def tag():
-    pass
+def tag(tag_id):
+    tag = Tag(tag_id)
+    messages = {}
+    messages['tag'] = tag
+    messages['tasks'] = tag.tasks()
+    return messages    
 
 def tags():
-    pass
+    messages = {}
+    messages['tags'] = list(get_tags())
+    return messages    
 
 def new_task(user_id):
     pass
 
 def new_tag(user_id):
+    pass
+
+def recieve_task(task_id, user_id):
+    pass
+
+def complete_task(task_id):
+    pass
+
+def abort_task(task_id, user_id):
+    pass
+
+def close_task(task_id):
+    pass
+
+def new_notice(task_id):
+    pass
+
+def log_out(user_id):
     pass
 

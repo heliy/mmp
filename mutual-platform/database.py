@@ -1,7 +1,9 @@
 #coding:UTF-8
 
 from sqlite3 import dbapi2 as sqlite
-from flask import _app_ctx_stack
+# from flask import _app_ctx_stack
+
+from config import *
 
 def get_db():
     """
@@ -10,7 +12,7 @@ def get_db():
     """    
     top = _app_ctx_stack.top
     if not hasattr(top, 'sqlite_db'):
-        top.sqlite_db = sqlite.connect(app.config["DATABASE"])
+        top.sqlite_db = sqlite.connect(DATABASE)
         top.sqlite_db.row_factory = sqlite.Row
     return top.sqlite_db
 

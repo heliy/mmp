@@ -8,6 +8,7 @@ create table users(
     -- email text default "empty",
     address text default "empty",
     score float default 0.,
+    latest_sign_time integer default 0,
 );
 
 drop table if exists tasks;
@@ -52,10 +53,9 @@ create table events(
     event_id integer primary key autoincrement,
     user_id integer not null,
     task_id integer not null,
-    another_id integer not null,
     act integer not null,
     init_date integer not null,
-    statu integer not null,
+    statu integer not null default 0,
 )
 
 drop table if exits notices;
