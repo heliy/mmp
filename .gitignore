@@ -6,3 +6,5 @@ flask-test/
 
 # py
 *.pyc
+
+*.db

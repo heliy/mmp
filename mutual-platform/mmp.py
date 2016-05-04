@@ -12,7 +12,6 @@
 
 from flask import Flask, request, session, redirect, g
 from flask import render_template, flash
-from werkzeug.security import generate_password_hash
 
 from models import *
 
@@ -169,7 +168,7 @@ def register_phone():
             return redirect(url_for('register_valid'))
     return render_template('register_phone.html', error=error)
 
-@app.route('/register/valid', method=['GET', 'POST']):
+@app.route('/register/valid', method=['GET', 'POST'])
 def register_valid():
     ''' registers the user, 2nd step, validate phone number '''
     if g.user:
