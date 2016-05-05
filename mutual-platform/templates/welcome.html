@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+  <h2>Welcome {{ username }}</h2>
+  <li><a href="{{ url_for('notices_page') }}">You have <strong>{{ notice }}</strong> notices</a></li>
+  <li><a href="{{ url_for('events_page') }}">You have <strong>{{ event }}</strong> events</a></li>
+
+  <br>
+  <li><a href="{{ url_for('people_page', username=username)}}">Your Homepage</a></li>
+  <li><a href="{{ url_for('people_tasks_page', username=username)}}">Your Tasks</a></li>
+
+  <br>
+  <li><a href="{{ url_for('urgent_page')}}">Urgent Tasks</a></li>
+  <li><a href="{{ url_for('recent_page')}}">Recent Tasks</a></li>
+  <li><a href="{{ url_for('popular_page')}}">Popular Tasks</a></li>
+  <br>
+  <li><a href="{{ url_for('all_tasks_page')}}">All Tasks</a></li>
+  <li><a href="{{ url_for('all_tags_page')}}">All Tags</a></li>
+  <br>
+  <li><a href="{{ url_for('new_task_page') }}">New Task</a></li>
+  <li><a href="{{ url_for('new_tag_page') }}">New Tag</a></li>  
+
+  <br>
+  <li><a href="{{ url_for('logout')}}">Log Out</a></li>
+  <br>
+
+{% endblock %}

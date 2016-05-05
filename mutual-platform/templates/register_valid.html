@@ -1,13 +1,10 @@
 {% extends "layout.html" %}
 {% block title %}Sign Up{% endblock %}
 {% block content %}
-<h2>Sign Up - Phone</h2>
+<h2>Sign Up - Valid Phone</h2>
   {% if error %}<div class="error"><strong>Error:</strong> {{ error }}</div>{% endif %}
+  <div class="phone"><strong>Phone:</strong> {{ phone }}</div>
   <form action="" method="post">
-    <dl>
-      <dt>Phone Number:
-      <dd><input type="text" name="telephone" size="30">
-    </dl>
     <div class="actions"><input type="submit" value="Sign Up"></div>
   </form>
 <li><a href="{{ url_for('login')}}">Sign In</a></li>

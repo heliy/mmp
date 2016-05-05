@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <title>{% block title %}{% endblock %} - Micro Mutual Platform</title>
+  </head>
+  <body>
+    <div id="content">{% block content %}{% endblock %}</div>
+    <div id="footer">
+        {% block footer %}
+        {% endblock %}
+    </div>
+    <br>
+    <li><a href="{{ url_for('help_page')}}">Help</a></li>
+  </body>
+</html>

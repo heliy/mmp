@@ -4,11 +4,38 @@ import time
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
-# from database import get_db, query_db
-from database import test_get as get_db
-from database import test_query as query_db
+from database import get_db, query_db
+from database import test_init as init_db
 
 from config import *
+
+__all__ = [
+    'get_user',
+
+    # VALID
+    'have_phone',
+    'have_user_id',
+    'have_username',
+
+    # POST
+    'init_db',
+    'register_user',
+    
+    # GET
+    'welcome',
+    # 'account',
+    # 'task_info',
+    # 'tag_info',
+    # 'notice_info',
+    # 'event_info',
+    # 'user_tasks',
+    # 'user_events',
+    # 'peoples',
+    # 'tasks',
+    # 'notices',
+    # 'urgents',
+    # 'tags',
+    ]
 
 user_pool = {}
 task_pool = {}
@@ -90,17 +117,16 @@ class User(object):
         ''' load user from users '''
         rv = query_db('select * from users where %s = ?' % (item), [value], one=True)
         [self.user_id, self.username, self.user_type, self.phone_no, self.pw_hash, self.address,
-         self.score, self.latest, self.raised_events, self.raised_notices] = rv
+         self.latest, self.raised_events, self.raised_notices] = rv
 
     def update_db(self):
         ''' update user in users '''
         db = get_db()
         db.execute('''update users set user_type = ?, username = ?, phone_no = ?,
-                      pw_hash = ?, address = ?, score = ?, latest_sign_time = ?,
+                      pw_hash = ?, address = ?, latest_sign_time = ?,
                       raised_events = ?, raised_notices = ? where user_id = ?''',
-                   [self.user_type, self.username, self.phone_no, self.pw_hash,
-                    self.address, self. score, self.latest, self.raised_events,
-                    self.raised_notices, self.user_id])
+                   [self.user_type, self.username, self.phone_no, self.pw_hash, self.address,
+                    self.latest, self.raised_events, self.raised_notices, self.user_id])
         db.commit()
 
     def delete_db(self):
@@ -497,10 +523,35 @@ def all_notices():
     for notice_id in rv:
         yield get_notice(notice_id[0])
 
-def all_events():
-    rv = query_db('''select event_id from events order by event_id desc''')
+def all_events(user_id):
+    rv = query_db('''select event_id from events where user_id = ? order by event_id desc''',
+                  [user_id])
     for event_id in rv:
         yield Event(event_id[0])
+
+# ------------ VALID ----------------------------------
+
+def have_phone(phone_no):
+    rv = query_db('''select phone_no from users''')
+    for p in rv:
+        if p[0] == phone_no:
+            return True
+    return False
+
+def have_username(username):
+    rv = query_db('''select username from users''')
+    for un in rv:
+        if username == un[0]:
+            return True
+    return False
+
+def have_user_id(user_id):
+    rv = query_db('''select user_id from users''')
+    for ui in rv:
+        # print("in db:", ui[0])
+        if user_id == ui[0]:
+            return True
+    return False
 
 # ------------- POST ------------------------------------
 
@@ -512,10 +563,16 @@ def register_user(user_id, username, user_type, phone_no, address, password):
     user.user_type = user_type
     user.update_db()
     add_user_pool(user)
-    return user
+    return account(user.user_id)
 
-def log_in(user_id):
-    pass
+def log_in(username, pw):
+    if have_username(username):
+        user = get_user(username, False)
+        if user.check_password(pw):
+            return 1                      # success
+        else:
+            return 0                      # incorrect password
+    return -1                             # have not registered
 
 def new_task(user_id):
     pass
@@ -544,42 +601,97 @@ def log_out(user_id):
 
 # ------------- GET --------------------------------------
 
-def welcome(user_id):
-    user = get_user(user_id)
+def welcome(username):
+    user = get_user(username, False)
     messages = {}
-    messages['notice'] = user.arised_notices
-    messages['event'] = user.arised_events
+    messages['notice'] = user.raised_notices
+    messages['event'] = user.raised_events
+    messages['usertype'] = user.user_type
     return messages
 
 def account(username):
     user = get_user(username, False)
     messages = {}
-    messages['user'] = user
-    return messages
-
-def user_tasks(username):
-    user = get_user(username, False)
-    messages = {}
-    messages[CREATE] = list(user.created_tasks())
-    messages[RECIEVED] = list(user.participate_tasks(RECIVED))
-    messages[COMPLETE] = list(user.participate_tasks(COMPLETE))
-    messages[CLOSED] = list(user.participate_tasks(CLOSED))
-    messages[FAILED] = list(user.participate_tasks(FAILED))
-    messages[ABORT] = list(user.participate_tasks(ABORT))
-    return messages
-
-def get_peoples():
-    messages = {}
-    messages['users'] = list(all_users())
+    messages['usertype'] = user.user_type
+    messages['username'] = user.username
+    messages['phone_no'] = user.phone_no
+    messages['user_id'] = user.user_id
+    messages['address'] = user.address
+    messages['score'] = user.mark()
     return messages
 
 def task_info(task_id):
     messages = {}
     task = get_task(task_id)
-    messages['task'] = task
-    messages['poster'] = task.poster()
-    messages['helper'] = None if task.helper() is None or task.helper()
-    messages['tags'] = all(task.tags())
+    messages['task_id'] = task.task_id
+    messages['poster'] = account(task.poster().username)
+    messages['helper'] = account(task.helper().username)
+    messages['create_date'] = task.create_date
+    messages['title'] = task.title
+    messages['content'] = task.content
+    messages['public_date'] = task.public_date
+    messages['end_date'] = task.end_date
+    messages['statu'] = task.statu
+    messages['score'] = task.score
+    return messages
+
+def tag_info(tag_id):
+    tag = get_tag(tag_id)
+    messages = {}
+    messages['tag_id'] = tag.tag_id
+    messages['tagname'] = tag.tagname
+    messages['creator'] = account(task.creator().username)
+    messages['init_time'] = tag.init_time
+    messages['tasks'] = [task_info(task.task_id) for task in tag.tasks()]
+    return messages
+
+def notice_info(notice_id):
+    messages = {}
+    notice = get_notice(notice_id)
+    messages['notice_id'] = notice.notice_id
+    messages['poster'] = account(notice.poster().usrename())
+    messages['post_date'] = notice.created_date
+    messages['title'] = notice.title
+    messages['info'] = notice.info
+    return messages
+
+def event_info(event_id):
+    event = Event(event_id)
+    messages = {}
+    messages['event_id'] = event.event_id
+    messages['task'] = task_info(event.task().task_id)
+    messages['user'] = task_info(event.user().username)
+    messages['act'] = event.act
+    messages['raised_date'] = event.init_date
+    messages['statu'] = event.statu
+    return messages
+
+def user_tasks(username):
+    user = get_user(username, False)
+    messages = {}
+    messages[CREATE] = [task_info(task.task_id) for task in user.created_tasks()]
+    messages[RECIEVED] = [task_info(task.task_id) for task in user.participate_tasks(RECIVED)]
+    messages[COMPLETE] = [task_info(task.task_id) for task in user.participate_tasks(COMPLETE)]
+    messages[CLOSED] = [task_info(task.task_id) for task in user.participate_tasks(CLOSED)]
+    messages[FAILED] = [task_info(task.task_id) for task in user.participate_tasks(FAILED)]
+    messages[ABORT] = [task_info(task.task_id) for task in user.participate_tasks(ABORT)]
+    return messages
+
+def user_events(username):
+    user = get_user(username, False)
+    messages = {}
+    messages['new'] = []
+    messages['past'] = []
+    for event in all_events(user.user_id):
+        if event.statu == RAISED:
+            messages['new'].append(event_info(event.event_id))
+        else:
+            messages['past'].append(event_info(event.event_id))
+    return messages
+
+def peoples():
+    messages = {}
+    messages['users'] = [account(user.username) for user in all_users()]
     return messages
 
 def tasks():
@@ -594,17 +706,11 @@ def tasks():
         messages[task.statu].append(task_info(task.task_id))
     return messages
 
-def notice_info(notice_id):
-    messages = {}
-    notice = get_notice(notice_id)
-    messages['notice'] = notice
-    messages['poster'] = notice.poster()
-    return messages
-
 def notices():
     messages = []
     for notice in all_notices():
         messages.append(notice_info(notice.notice_id))
+    messages['notices'] = messages
     return messages
 
 def urgents(time_scale):
@@ -616,19 +722,15 @@ def urgents(time_scale):
                      order by end_time''', [t])
     for task_id in rv:
         messages.append(task_info(task_id[0]))
+    messages['urgents'] = messages
+    return messages
 
 def popular(limit):
     pass
-
-def tag_info(tag_id):
-    tag = get_tag(tag_id)
-    messages = {}
-    messages['tag'] = tag
-    messages['tasks'] = tag.tasks()
-    return messages
 
 def tags():
     messages = []
     for tag in all_tags():
         messages.append(tag_info(tag.tag_id))
+    messages['tags'] = messages
     return messages

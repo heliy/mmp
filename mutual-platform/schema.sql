@@ -7,7 +7,7 @@ create table users (
     pw_hash text default "empty",
     -- email text default "empty",
     address text default "empty",
-    score float default 0.,
+    -- score float default 0.,
     latest_sign_time integer default 0,
     raised_events integer default 0,
     raised_notices integer default 0

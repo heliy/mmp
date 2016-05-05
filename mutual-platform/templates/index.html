@@ -1,5 +1,6 @@
-TESTING
-
-^ ^
-
-by heli
+{% extends "layout.html" %}
+{% block title %}Hello{% endblock %}
+{% block content %}
+<li><a href="{{ url_for('register_phone')}}">Sign Up</a></li>
+<li><a href="{{ url_for('login')}}">Sign In</a></li>
+{% endblock %}

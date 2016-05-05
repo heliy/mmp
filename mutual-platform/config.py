@@ -1,7 +1,6 @@
 #coding:UTF-8
 
 DATABASE = 'mmp.db'
-DEBUG = True
 
 # User type
 STUDENT = 1
