@@ -1,0 +1,15 @@
+{% block title %}New Tag{% endblock %}
+{% block content %}
+<h2>New Tag</h2>
+{% if error %}<div class="error"><strong>Error:</strong> {{ error }}</div>
+{% if name %}<li><a href="{{ url_for('tag_info_page', tagname=name)}}">
+    <strong>{{ name }}</strong></a></li>
+{% endif %}
+{% endif %}
+  <form action="" method="post">
+      <dt>Tag name:
+	<input type="text" name="tagname" size="30">
+	</dt>
+    <div class="actions"><input type="submit" value="Submit"></div>
+  </form>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block title %} {{ name }} - Tag {% endblock %}
+{% block content %}
+<h2>Tag: {{ name }}</h2>
+<div class="creater">Creater:
+  <a href="{{ url_for('people_page', username=creater)}}"><strong>{{ creater }}</strong></a>
+</div>
+<div class="init_date">
+  Created Date: {{ init }}
+</div>
+<br>
+<table>
+Tasks in {{name}}:
+{% for task in tasks %}
+<tr><td>
+  <a href="{{url_for('task_page', task_id=task['task_id'])}}">{{task["title"]}}</a>
+  </td><td>{{task["statu_str"]}}</td>
+</tr>
+</table>
+{% endfor %}
+{% endblock %}

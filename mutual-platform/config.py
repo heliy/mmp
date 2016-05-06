@@ -6,7 +6,6 @@ DATABASE = 'mmp.db'
 STUDENT = 1
 STAFF = 2
 
-
 CREATE = 9
 
 # Task statu

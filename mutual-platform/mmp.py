@@ -17,6 +17,7 @@ from flask import render_template, flash
 
 from models import *
 from config import *
+from utils import *
 
 SECRET_KEY = 'development key'
 DEBUG = True
@@ -86,7 +87,7 @@ def all_users_page():
     return render_template("peoples.html", messages=peoples())
 
 @app.route('/task/<task_id>')
-def task_info_page(task_id):
+def task_page(task_id):
     if not g.user:
         return redirect(url_for('welcome_page'))
     return render_template("task.html", messages=task_info(task_id))
@@ -137,29 +138,72 @@ def popular_page():
         return redirect(url_for('welcome_page'))
     return render_template('popular.html', messages=popular_tasks())    
 
-@app.route('/tag/<tag_id>')
-def tag_info_page(tag_id):
+@app.route('/tag/<tagname>')
+def tag_info_page(tagname):
     if not g.user:
         return redirect(url_for('welcome_page'))
-    return render_template('tag.html', messages=tag(tag_id))
+    ms = tag_info(tagname)
+    return render_template('tag.html', name=ms['tagname'], creater=ms['creator']['username'],
+                           init=format_datetime(ms['init_time']), tasks=ms['tasks'])
 
 @app.route('/tags')
 def all_tags_page():
     if not g.user:
         return redirect(url_for('welcome_page'))
+    
     return render_template('tags.html', messages=tags())
 
 @app.route('/new/task', methods=["GET", "POST"])
 def new_task_page():
     if not g.user:
         return redirect(url_for('welcome_page'))
-    return render_template('new_task.html', messages=new_task(session['user_id']))
+    error = None
+    tagnames = [t['tagname'] for t in tags()["tags"]]
+    if request.method == "POST":
+        if not request.form['title']:
+            error = "You have to enter the title of task"
+        elif not request.form['content']:
+            error = "You have to enter the content of task"
+        else:
+            error = date(request.form, "public")
+            if type(error) == str:
+                return render_template('new_task.html', error=error, tags=tagnames)
+            public_date = error
+            error = date(request.form, "end")
+            if type(error) == str:
+                return render_template('new_task.html', error=error, tags=tagnames)
+            end_date = error
+            now = int(datetime.now().timestamp())
+            print(public_date, end_date, now)
+            # if public_date < now:
+            #     error = "You need enter a public date after NOW"
+            if end_date < public_date:
+                error = "You need enter a end date after public date"
+            else:
+                tagnames = [tag for tag in tagnames if request.form.get(tag, None)]
+                ms = new_task(session['username'], request.form["title"], request.form['content'],
+                              public_date, end_date, tagnames)
+                return redirect(url_for("task_page", task_id=ms["task_id"]))
+    return render_template('new_task.html', error=error, tags=tags()["tags"])
 
-@app.route('/new/tag')
+@app.route('/new/tag', methods=["GET", "POST"])
 def new_tag_page():
     if not g.user:
         return redirect(url_for('welcome_page'))
-    return render_template('new_tag.html', messages=new_tag(session['user_id']))
+    error = None
+    if request.method == 'POST':
+        if not request.form['tagname']:
+            error = "You have to enter the name of tag"
+        else:
+            tagname = request.form['tagname']
+            if have_tagname(tagname):
+                error = "The name is already created, see:"
+                ms = tag_info(tagname)
+                return render_template('new_tag.html', error=error, name=ms['tagname'])
+            else:
+                new_tag(session['username'], tagname)
+                return redirect(url_for('tag_info_page', tagname=tagname))
+    return render_template('new_tag.html', error=error)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -168,16 +212,20 @@ def login():
         return redirect(url_for('welcome_page'))
     error = None
     if request.method == 'POST':
-        user = get_user(request.form['username'], False)
-        if user is None:
-            error = 'Invalid username'
-        elif not user.check_password(request.form['password']):
-            error = 'Invalid password'
+        if not request.form['username']:
+            error = "You have to enter your username"
+        elif not request.form['password']:
+            error = "You have to enter your password"
         else:
-            flash('You were logged in')
-            session['user_id'] = user.user_id
-            session['username'] = user.username
-            return redirect(url_for('welcome_page'))
+            statu = log_in(request.form['username'], request.form['password'])
+            if statu < 0:
+                error = 'Invalid username'
+            elif statu == 0:
+                error = 'Invalid password'
+            else:
+                flash('You were logged in')
+                session['username'] = request.form['username']
+                return redirect(url_for('welcome_page'))
     return render_template('login.html', error=error)
 
 @app.route('/register/phone', methods=['GET', 'POST'])

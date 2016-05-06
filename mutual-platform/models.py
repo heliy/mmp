@@ -10,22 +10,24 @@ from database import test_init as init_db
 from config import *
 
 __all__ = [
-    'get_user',
-
     # VALID
     'have_phone',
     'have_user_id',
     'have_username',
+    'have_tagname',
 
     # POST
     'init_db',
     'register_user',
+    'log_in',
+    'new_tag',
+    'new_task',
     
     # GET
     'welcome',
     # 'account',
     # 'task_info',
-    # 'tag_info',
+    'tag_info',
     # 'notice_info',
     # 'event_info',
     # 'user_tasks',
@@ -34,7 +36,7 @@ __all__ = [
     # 'tasks',
     # 'notices',
     # 'urgents',
-    # 'tags',
+    'tags',
     ]
 
 user_pool = {}
@@ -339,7 +341,11 @@ class Task(object):
 
     def add_tag(self, tag):
         ttl = TTl(tag, self, True)
-        
+
+    def statu_str(self):
+        strs = ["already", "received", "complete", "closed", "abort", "failed"]
+        return strs[self.statu]
+
 class Tag(object):
     def __init__(self, tag_id=None, tagname=None, creator=None, create=False):
         if create:
@@ -386,7 +392,7 @@ class Tag(object):
         db.commit()
 
     def creator(self):
-        return get_user(self.user_id)
+        return get_user(self.creater)
 
     def tasks(self):
         rv = query_db('''select task_id from ttl where tag_id = ? order by task_id
@@ -553,6 +559,13 @@ def have_user_id(user_id):
             return True
     return False
 
+def have_tagname(tagname):
+    rv = query_db('''select tagname from tags''')
+    for ui in rv:
+        if tagname == ui[0]:
+            return True
+    return False    
+
 # ------------- POST ------------------------------------
 
 def register_user(user_id, username, user_type, phone_no, address, password):
@@ -574,12 +587,16 @@ def log_in(username, pw):
             return 0                      # incorrect password
     return -1                             # have not registered
 
-def new_task(user_id):
-    pass
+def new_tag(username, tagname):
+    user = get_user(username, False)
+    user.new_tag(tagname)
 
-def new_tag(user_id):
-    pass
-
+def new_task(username, title, content, public_date, end_date, tagnames):
+    user = get_user(username, False)
+    tags = [get_tag(tagname, False) for tagname in tagnames]
+    task = user.post_task(title, content, public_date, end_date, tags)
+    return task_info(task.task_id)    
+    
 def recieve_task(task_id, user_id):
     pass
 
@@ -625,22 +642,24 @@ def task_info(task_id):
     task = get_task(task_id)
     messages['task_id'] = task.task_id
     messages['poster'] = account(task.poster().username)
-    messages['helper'] = account(task.helper().username)
+    if task.helper():
+        messages['helper'] = account(task.helper().username)
     messages['create_date'] = task.create_date
     messages['title'] = task.title
     messages['content'] = task.content
     messages['public_date'] = task.public_date
     messages['end_date'] = task.end_date
     messages['statu'] = task.statu
+    messages['statu_str'] = task.statu_str()
     messages['score'] = task.score
     return messages
 
-def tag_info(tag_id):
-    tag = get_tag(tag_id)
+def tag_info(tagname):
+    tag = get_tag(tagname, False)
     messages = {}
     messages['tag_id'] = tag.tag_id
     messages['tagname'] = tag.tagname
-    messages['creator'] = account(task.creator().username)
+    messages['creator'] = account(tag.creator().username)
     messages['init_time'] = tag.init_time
     messages['tasks'] = [task_info(task.task_id) for task in tag.tasks()]
     return messages
@@ -692,7 +711,7 @@ def user_events(username):
 def peoples():
     messages = {}
     messages['users'] = [account(user.username) for user in all_users()]
-    return messages
+    return {"users": messages}
 
 def tasks():
     messages = {}
@@ -710,8 +729,7 @@ def notices():
     messages = []
     for notice in all_notices():
         messages.append(notice_info(notice.notice_id))
-    messages['notices'] = messages
-    return messages
+    return {"notice": messages}
 
 def urgents(time_scale):
     for task in all_tasks(RECIEVED):
@@ -722,8 +740,7 @@ def urgents(time_scale):
                      order by end_time''', [t])
     for task_id in rv:
         messages.append(task_info(task_id[0]))
-    messages['urgents'] = messages
-    return messages
+    return {"urgents": messages}
 
 def popular(limit):
     pass
@@ -731,6 +748,5 @@ def popular(limit):
 def tags():
     messages = []
     for tag in all_tags():
-        messages.append(tag_info(tag.tag_id))
-    messages['tags'] = messages
-    return messages
+        messages.append(tag_info(tag.tagname))
+    return {"tags": messages}
