@@ -90,22 +90,46 @@ def all_users_page():
 def task_page(task_id):
     if not g.user:
         return redirect(url_for('welcome_page'))
-    error = None
-    if request.method == 'POST':
-        pass
+    error =  None
     ms = task_info(task_id)
     poster = ms.get('poster')
-    helper = ms.get('helper', None)
+    helper = ms.get('helper', False)
     title = ms.get('title')
     content = ms.get('content')
     create_date = format_datetime(ms.get('create_date'))
     public_date = format_datetime(ms.get('public_date'))
     end_date = format_datetime(ms.get('end_date'))
-    statu = ms.get('statu_str')
+    statu_str = ms.get('statu_str')
+    statu = ms.get('statu')
     score = ms.get('score')
+    if request.method == 'POST':
+        print(request.form)
+        if session['username'] == poster and statu == COMPLETE:
+            if not request.form['mark']:
+                error = "You need enter your mark"
+            else:
+                try:
+                    mark = float(request.form['mark'])
+                except ValueError:
+                    error = "The mark should be a number between 0 and 5"
+                if not error:
+                    mark_task(poster, task_id, mark)
+                    return redirect(url_for('task_page', task_id=task_id))
+        elif session['username'] == helper:
+            if request.form.get('complete', None):
+                complete_task(helper, task_id)
+                return redirect(url_for('task_page', task_id=task_id))
+            elif request.form.get('abort', None):
+                abort_task(helper, task_id)
+                return redirect(url_for('task_page', task_id=task_id))
+        else:
+            if request.form['submit']:
+                receive_task(session['username'], task_id)
+                return redirect(url_for('task_page', task_id=task_id))
     return render_template('task.html', poster=poster, helper=helper, title=title, 
                            content=content, create_date=create_date, public_date=public_date,
-                           end_date=end_date, statu=statu, username=session['username'])
+                           end_date=end_date, statu=statu, statu_str=statu_str, score=score,
+                           username=session['username'], error=error)
 
 @app.route('/task/<task_id>/tags', methods=['GET', 'POST'])
 def task_tags_page(task_id):
@@ -138,9 +162,24 @@ def notices_page():
         return redirect(url_for('welcome_page'))
     return render_template('notice.html', messages=notice())
 
-@app.route('/events')
+@app.route('/events', methods=['GET', 'POST'])
 def events_page():
-    pass
+    if not g.user:
+        return redirect(url_for('welcome_page'))
+    if request.method == 'POST':
+        pass
+    ms = events(session['username'])
+    ids, task_ids, task_titles, acts, dates, status = [], [], [], [], [], []
+    for event_info in ms['events']:
+        ids.append(event_info['event_id'])
+        task_ids.append(event_info['task']['task_id'])
+        task_titles.append(event_info['task']['title'])
+        acts.append(TASK_STATU_LABELS[event_info['act']])
+        dates.append(format_datetime(event_info['raised_date']))
+        status.append(event_info['statu'])
+    return render_template('events.html', num_unchecked=ms['num_unchecked'], num_total=len(ids),
+                           ids=ids, task_ids=task_ids, task_titles=task_titles, acts=acts,
+                           dates=dates, status=status)
 
 @app.route('/help')
 def help_page():
@@ -332,7 +371,7 @@ def register_info():
 def logout():
     """Logs the user out."""
     flash('You were logged out')
-    session.pop('user_id', None)
+    session.pop('username', None)
     return redirect(url_for('welcome_page'))
 
 if __name__ == "__main__":

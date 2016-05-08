@@ -22,6 +22,10 @@ __all__ = [
     'log_in',
     'new_tag',
     'new_task',
+    'mark_task',
+    'receive_task',
+    'complete_task',
+    'abort_task',
     
     # GET
     'welcome',
@@ -29,7 +33,6 @@ __all__ = [
     'task_info',
     'tag_info',
     # 'notice_info',
-    # 'event_info',
     # 'user_tasks',
     # 'user_events',
     # 'peoples',
@@ -37,6 +40,7 @@ __all__ = [
     # 'notices',
     # 'urgents',
     'tags',
+    'events',
     ]
 
 user_pool = {}
@@ -594,16 +598,27 @@ def new_task(username, title, content, public_date, end_date, tagnames):
     user = get_user(username, False)
     tags = [get_tag(tagname, False) for tagname in tagnames]
     task = user.post_task(title, content, public_date, end_date, tags)
-    return task_info(task.task_id)    
+    return task_info(task.task_id)
+
+def mark_task(username, task_id, mark):
+    user = get_user(username, False)
+    task = get_task(task_id)
+    user.commit_task(task, mark)
     
-def recieve_task(task_id, user_id):
-    pass
+def receive_task(username, task_id):
+    user = get_user(username, False)
+    task = get_task(task_id)
+    user.receive_task(task)
 
-def complete_task(task_id):
-    pass
+def complete_task(username, task_id):
+    user = get_user(username, False)
+    task = get_task(task_id)
+    user.complete_task(task)
 
-def abort_task(task_id, user_id):
-    pass
+def abort_task(username, task_id):
+    user = get_user(username, False)
+    task = get_task(task_id)
+    user.abort_task(task)
 
 def close_task(task_id):
     pass
@@ -678,10 +693,10 @@ def event_info(event_id):
     messages = {}
     messages['event_id'] = event.event_id
     messages['task'] = task_info(event.task().task_id)
-    messages['user'] = task_info(event.user().username)
+    messages['user'] = account(event.user().username)
     messages['act'] = event.act
     messages['raised_date'] = event.init_date
-    messages['statu'] = event.statu
+    messages['statu'] = event.statu == RAISED
     return messages
 
 def user_tasks(username):
@@ -743,3 +758,12 @@ def tags():
     for tag in all_tags():
         messages.append(tag_info(tag.tagname))
     return {"tags": messages}
+
+def events(username):
+    user = get_user(username, False)
+    messages = {}
+    messages['num_unchecked'] = user.raised_events
+    messages['events'] = []
+    for event in user.all_events():
+        messages['events'].append(event_info(event.event_id))
+    return messages

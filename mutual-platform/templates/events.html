@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<h2>All Events:</h2>
+<h3>You have {{num_unchecked}} events to check</h3>
+<br>
+<table>
+  <tr><td>Event_ID</td><td>Task<td><td>Act</td><td>Raised Date</td><td>Statu</td></tr>
+  {% for i in range(num_total) %}
+  <tr>
+    <td>{{ids[i]}}</td>
+    <td><a href="{{url_for('task_page', task_id=task_ids[i])}}">{{task_titles[i]}}</td>
+    <td>{{acts[i]}}</td><td>{{dates[i]}}</td><td>
+    {% if status[i] %}
+    <form action="" method="post">
+      <div class="actions"><input type="submit" name="{{task_ids[i]}}" value="Check"></div>
+    </form>    
+    {% else %}
+    CHECKED
+    {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
