@@ -86,11 +86,26 @@ def all_users_page():
         return redirect(url_for('welcome_page'))
     return render_template("peoples.html", messages=peoples())
 
-@app.route('/task/<task_id>')
+@app.route('/task/<task_id>', methods=['GET', 'POST'])
 def task_page(task_id):
     if not g.user:
         return redirect(url_for('welcome_page'))
-    return render_template("task.html", messages=task_info(task_id))
+    error = None
+    if request.method == 'POST':
+        pass
+    ms = task_info(task_id)
+    poster = ms.get('poster')
+    helper = ms.get('helper', None)
+    title = ms.get('title')
+    content = ms.get('content')
+    create_date = format_datetime(ms.get('create_date'))
+    public_date = format_datetime(ms.get('public_date'))
+    end_date = format_datetime(ms.get('end_date'))
+    statu = ms.get('statu_str')
+    score = ms.get('score')
+    return render_template('task.html', poster=poster, helper=helper, title=title, 
+                           content=content, create_date=create_date, public_date=public_date,
+                           end_date=end_date, statu=statu, username=session['username'])
 
 @app.route('/task/<task_id>/tags', methods=['GET', 'POST'])
 def task_tags_page(task_id):
@@ -106,7 +121,16 @@ def task_tags_page(task_id):
 def all_tasks_page():
     if not g.user:
         return redirect(url_for('welcome_page'))
-    return render_template('tasks.html', messages=tasks())
+    task_ids, posters, create_dates, status, titles = [], [], [], [], []
+    for t in tasks()['tasks']:
+        task_ids.append(t['task_id'])
+        posters.append(t['poster'])
+        create_dates.append(format_datetime(t['create_date']))
+        titles.append(t['title'])
+        status.append(t['statu_str'])
+    print(status)
+    return render_template('tasks.html', ids=task_ids, titles=titles, posters=posters,
+                           create_dates=create_dates, status=status, num=len(titles))
 
 @app.route('/notices')
 def notices_page():
@@ -150,8 +174,11 @@ def tag_info_page(tagname):
 def all_tags_page():
     if not g.user:
         return redirect(url_for('welcome_page'))
-    
-    return render_template('tags.html', messages=tags())
+    tag_ids, tagnames = [], []
+    for tag in tags()['tags']:
+        tag_ids.append(tag['tag_id'])
+        tagnames.append(tag['tagname'])
+    return render_template('tags.html', ids=tag_ids, names=tagnames, num=len(tag_ids))
 
 @app.route('/new/task', methods=["GET", "POST"])
 def new_task_page():
@@ -165,10 +192,11 @@ def new_task_page():
         elif not request.form['content']:
             error = "You have to enter the content of task"
         else:
-            error = date(request.form, "public")
-            if type(error) == str:
-                return render_template('new_task.html', error=error, tags=tagnames)
-            public_date = error
+            # error = date(request.form, "public")
+            # if type(error) == str:
+            #     return render_template('new_task.html', error=error, tags=tagnames)
+            # public_date = error
+            public_date = datetime.now().timestamp()
             error = date(request.form, "end")
             if type(error) == str:
                 return render_template('new_task.html', error=error, tags=tagnames)

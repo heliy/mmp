@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}{{title}} - Task{% endblock %}
+{% block content %}
+<h2>Task: {{Title}}</h2>
+<br>
+<h3>{{title}}</h3>
+<br>
+{{content}}
+<br>
+<br>
+<li>Poster: <a href="{{url_for('people_page', username=poster)}}">{{poster}}</a></li>
+{% if helper %}
+<li>Helper: <a href="{{url_for('people_page', username=helper)}}">{{helper}}</a><li>
+{% endif %}
+<li>Post Date: {{create_date}}</li>
+<li>End Date: {{end_date}}</li>
+<li>Statu: {{statu}}</li>
+
+<br>
+
+{% if poster == username %}
+  {% if statu == COMPLETE %}
+
+  {% endif %}
+{% elif helper == username %}
+
+{% else %}
+
+{% endif %}
+
+{% endblock %}

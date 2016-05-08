@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Tasks{% endblock %}
+{% block content %}
+<h2>All Tasks:</h2>
+<br>
+<table>
+  <tr><td>Task_ID</td><td>Title<td><td>Poster</td><td>Post Date</td><td>Statu</td></tr>
+  {% for i in range(num) %}
+  <tr>
+    <td>{{ids[i]}}</td><td><a href="{{url_for('task_page', task_id=ids[i])}}">{{titles[i]}}</td>
+    <td><a href="{{url_for('people_page', username=posters[i])}}">{{posters[i]}}</td>
+    <td>{{create_dates[i]}}</td><td>{{status[i]}}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

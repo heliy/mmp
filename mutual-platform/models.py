@@ -26,14 +26,14 @@ __all__ = [
     # GET
     'welcome',
     # 'account',
-    # 'task_info',
+    'task_info',
     'tag_info',
     # 'notice_info',
     # 'event_info',
     # 'user_tasks',
     # 'user_events',
     # 'peoples',
-    # 'tasks',
+    'tasks',
     # 'notices',
     # 'urgents',
     'tags',
@@ -343,8 +343,7 @@ class Task(object):
         ttl = TTl(tag, self, True)
 
     def statu_str(self):
-        strs = ["already", "received", "complete", "closed", "abort", "failed"]
-        return strs[self.statu]
+        return TASK_STATU_LABELS[self.statu]
 
 class Tag(object):
     def __init__(self, tag_id=None, tagname=None, creator=None, create=False):
@@ -641,9 +640,9 @@ def task_info(task_id):
     messages = {}
     task = get_task(task_id)
     messages['task_id'] = task.task_id
-    messages['poster'] = account(task.poster().username)
+    messages['poster'] = task.poster().username
     if task.helper():
-        messages['helper'] = account(task.helper().username)
+        messages['helper'] = task.helper().username
     messages['create_date'] = task.create_date
     messages['title'] = task.title
     messages['content'] = task.content
@@ -661,7 +660,7 @@ def tag_info(tagname):
     messages['tagname'] = tag.tagname
     messages['creator'] = account(tag.creator().username)
     messages['init_time'] = tag.init_time
-    messages['tasks'] = [task_info(task.task_id) for task in tag.tasks()]
+    messages['tasks'] = [task_id for task in tag.tasks()]
     return messages
 
 def notice_info(notice_id):
@@ -714,16 +713,10 @@ def peoples():
     return {"users": messages}
 
 def tasks():
-    messages = {}
-    messages[ALREADY] = []
-    messages[RECEIVED] = []
-    messages[COMPLETE] = []
-    messages[CLOSED] = []
-    messages[FAILED] = []
-    messages[ABORT] = []
+    messages = []
     for task in all_tasks():
-        messages[task.statu].append(task_info(task.task_id))
-    return messages
+        messages.append(task_info(task.task_id))
+    return {'tasks': messages}
 
 def notices():
     messages = []
