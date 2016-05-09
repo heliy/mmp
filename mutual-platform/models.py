@@ -26,15 +26,16 @@ __all__ = [
     'receive_task',
     'complete_task',
     'abort_task',
+    'check_event',
+    'now_time_events',
     
     # GET
     'welcome',
-    # 'account',
+    'account',
     'task_info',
     'tag_info',
     # 'notice_info',
-    # 'user_tasks',
-    # 'user_events',
+    'user_tasks',
     # 'peoples',
     'tasks',
     # 'notices',
@@ -78,7 +79,6 @@ def get_task(task_id):
     else:
         task = Task(task_id)
         add_task_pool(task)
-    task.now_time()
     return task
 
 def get_tag(value, is_id=True):
@@ -202,8 +202,6 @@ class User(object):
             yield get_task(task_id[0])
 
     def all_events(self):
-        for task in task_pool:
-            task_pool[task].now_time()
         rv = query_db('''select event_id from events where user_id = ?
                          order by event_id desc''', [self.user_id])
         for event_id in rv:
@@ -235,7 +233,7 @@ class User(object):
 
     def need_commit(self):
         for task in self.created_tasks():
-            if task.statu == COMPLETE or task.statu == FAILED:
+            if task.statu == COMPLETE:
                 yield task
 
     def mark(self):
@@ -297,7 +295,6 @@ class Task(object):
 
     def update_db(self):
         ''' update items in tasks '''
-        self.now_time()
         db = get_db()
         db.execute('''update tasks set poster = ?, helper = ?, create_date = ?,
                    title = ?, content = ?, public_date = ?, end_date = ?, statu = ?,
@@ -313,21 +310,20 @@ class Task(object):
                    [self.task_id])
 
     def poster(self):
-        self.now_time()
         return get_user(self.poster_id)
     
     def helper(self):
-        self.now_time()
         return get_user(self.helper_id) if self.helper_id >= 0 else None
 
     def now_time(self):
-        if self.statu >=0:
+        if ALREADY == self.statu or RECEIVED == self.statu:
             now = int(time.time())
             if now > self.end_date:
                 self.statu = FAILED
                 event = Event(user_id=self.poster_id, task_id=self.task_id, act=FAILED)
                 if self.helper() is not None:
                     event = Event(user_id=self.helper_id, task_id=self.task_id, act=FAILED)
+                self.update_db()
 
     def be_received(self, helper):
         self.helper_id = helper.user_id
@@ -464,7 +460,6 @@ class Event(object):
     def checked(self):
         self.statu = CHECKED
         self.update_db()
-        self.task().now_time()
 
     def user(self):
         return get_user(self.user_id)
@@ -620,15 +615,18 @@ def abort_task(username, task_id):
     task = get_task(task_id)
     user.abort_task(task)
 
-def close_task(task_id):
-    pass
-
 def new_notice(task_id):
     pass
 
-def log_out(user_id):
-    pass
+def check_event(username, event_id):
+    user = get_user(username, False)
+    event = Event(event_id)
+    user.check_event(event)
 
+def now_time_events():
+    for user in all_users():
+        for event in all_events(user.user_id):
+            event.now_time()
 
 # ------------- GET --------------------------------------
 
@@ -654,6 +652,7 @@ def account(username):
 def task_info(task_id):
     messages = {}
     task = get_task(task_id)
+    task.now_time()
     messages['task_id'] = task.task_id
     messages['poster'] = task.poster().username
     if task.helper():
@@ -703,23 +702,11 @@ def user_tasks(username):
     user = get_user(username, False)
     messages = {}
     messages[CREATE] = [task_info(task.task_id) for task in user.created_tasks()]
-    messages[RECIEVED] = [task_info(task.task_id) for task in user.participate_tasks(RECIVED)]
+    messages[RECEIVED] = [task_info(task.task_id) for task in user.participate_tasks(RECEIVED)]
     messages[COMPLETE] = [task_info(task.task_id) for task in user.participate_tasks(COMPLETE)]
     messages[CLOSED] = [task_info(task.task_id) for task in user.participate_tasks(CLOSED)]
     messages[FAILED] = [task_info(task.task_id) for task in user.participate_tasks(FAILED)]
     messages[ABORT] = [task_info(task.task_id) for task in user.participate_tasks(ABORT)]
-    return messages
-
-def user_events(username):
-    user = get_user(username, False)
-    messages = {}
-    messages['new'] = []
-    messages['past'] = []
-    for event in all_events(user.user_id):
-        if event.statu == RAISED:
-            messages['new'].append(event_info(event.event_id))
-        else:
-            messages['past'].append(event_info(event.event_id))
     return messages
 
 def peoples():
@@ -740,8 +727,6 @@ def notices():
     return {"notice": messages}
 
 def urgents(time_scale):
-    for task in all_tasks(RECIEVED):
-        task.now_time()
     messages = []
     t = int(time.time())+time_scale
     rv = query_db('''select task_id from tasks where statu = ALREADY and end_time < ?

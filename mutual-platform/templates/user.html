@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %}{{username}}{% endblock %}
+{% block content %}
+<h2>Accounts</h2>
+<li>name: {{username}}</li>
+<li>type: {{usertype}}</li>
+<li>address: {{address}}</li>
+<li>score: {{score}}</li>
+
+<h3>Post Tasks</h3>
+<table>
+  <tr><td>Task ID</td><td>Title</td><td>Post Date</td><td>Statu</td></tr>
+  {% for i in range(num_create) %}
+  <tr><td>{{create_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=create_ids[i])}}">
+      {{create_titles[i]}}</a></td><td>{{create_dates[i]}}</td><td>{{create_status[i]}}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Participate Tasks</h3>
+<table>
+  <tr><td>Task ID</td><td>Title</td><td>Statu</td></tr>
+  {% for i in range(num_participate) %}
+  <tr><td>{{participate_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=participate_ids[i])}}">
+      {{participate_titles[i]}}</a></td><td>{{participate_status[i]}}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

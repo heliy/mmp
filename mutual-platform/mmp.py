@@ -11,6 +11,7 @@
 """
 import os
 import sys
+import threading
 
 from flask import Flask, request, session, redirect, g, url_for
 from flask import render_template, flash
@@ -28,14 +29,17 @@ app.config.from_object(__name__)
 @app.before_request
 def before_request():
     g.user = None
-    if 'username' in session:
-        try:
+    if 'username' in session and session['username']:
+        if session['username'] is None:
+            session.pop('username', None)
+        else:
             try:
-                g.user = session['username']
-            except TypeError:
+                try:
+                    g.user = session['username']
+                except TypeError:
+                    pass
+            except KeyError:
                 pass
-        except KeyError:
-            pass
 
 @app.route('/')
 def welcome_page():
@@ -45,7 +49,7 @@ def welcome_page():
     otherwise, it will show simple welcome page.
     '''
     if g.user:
-        ms= welcome(session['username'])
+        ms = welcome(session['username'])
         return render_template('welcome.html', username=session['username'],
                                usertype=ms['usertype'], notice=ms['notice'], event=ms['event'])
     else:
@@ -55,21 +59,36 @@ def welcome_page():
 def people_page(username):
     if not g.user:
         return redirect(url_for('welcome_page'))
-    messages = account(username)
-    if session['username'] == username:
-        return render_template("mypage.html", messages=messages)
+    ms = account(username)
+    usertype = ms['usertype']
+    username = ms['username']
+    address = ms['address']
+    score = ms['score']
+    if usertype == STUDENT:
+        usertype = 'STUDENT'
+        notices = None
     else:
-        return render_template("yourpage.html", messages=messages)
-
-@app.route('/people/<username>/tasks')
-def people_tasks_page(username):
-    if not g.user:
-        return redirect(url_for('welcome_page'))
-    messages = user_tasks(username)
-    if session['username'] == username:
-        return render_template("mytasks.html", messages=messages)
-    else:
-        return render_template("yourtasks.html", messages=messages)    
+        usertypr = 'STAFF'
+        # TODO
+        notices = None        
+    ms = user_tasks(username)
+    creates = ms[CREATE]
+    create_ids = [c['task_id'] for c in creates]
+    create_titles = [c['title'] for c in creates]
+    create_dates = [format_datetime(c['create_date']) for c in creates]
+    create_status = [c['statu_str'] for c in creates]
+    participate_ids, participate_titles, participate_status = [], [], []
+    for c in ms[RECEIVED]+ms[COMPLETE]+ms[CLOSED]+ms[FAILED]+ms[ABORT]:
+        participate_ids.append(c['task_id'])
+        participate_titles.append(c['title'])
+        participate_status.append(c['statu_str'])
+    return render_template('user.html', me=session['username'], usertype=usertype,
+                           username=username, address=address, score=score,
+                           num_create=len(create_ids), create_ids=create_ids,
+                           create_titles=create_titles, create_dates=create_dates,
+                           create_status=create_status, num_participate=len(participate_ids),
+                           participate_ids=participate_ids, participate_titles=participate_titles,
+                           participate_status=participate_status, notices=notices)
 
 @app.route('/accounts/<username>', methods=['GET', 'POST'])
 def update_account_page(username):
@@ -80,11 +99,11 @@ def update_account_page(username):
     if request.mehod == 'POST':
         pass
 
-@app.route('/peoples')
-def all_users_page():
-    if not g.user:
-        return redirect(url_for('welcome_page'))
-    return render_template("peoples.html", messages=peoples())
+# @app.route('/peoples')
+# def all_users_page():
+#     if not g.user:
+#         return redirect(url_for('welcome_page'))
+#     return render_template("peoples.html", messages=peoples())
 
 @app.route('/task/<task_id>', methods=['GET', 'POST'])
 def task_page(task_id):
@@ -103,7 +122,6 @@ def task_page(task_id):
     statu = ms.get('statu')
     score = ms.get('score')
     if request.method == 'POST':
-        print(request.form)
         if session['username'] == poster and statu == COMPLETE:
             if not request.form['mark']:
                 error = "You need enter your mark"
@@ -152,7 +170,6 @@ def all_tasks_page():
         create_dates.append(format_datetime(t['create_date']))
         titles.append(t['title'])
         status.append(t['statu_str'])
-    print(status)
     return render_template('tasks.html', ids=task_ids, titles=titles, posters=posters,
                            create_dates=create_dates, status=status, num=len(titles))
 
@@ -166,8 +183,6 @@ def notices_page():
 def events_page():
     if not g.user:
         return redirect(url_for('welcome_page'))
-    if request.method == 'POST':
-        pass
     ms = events(session['username'])
     ids, task_ids, task_titles, acts, dates, status = [], [], [], [], [], []
     for event_info in ms['events']:
@@ -177,6 +192,16 @@ def events_page():
         acts.append(TASK_STATU_LABELS[event_info['act']])
         dates.append(format_datetime(event_info['raised_date']))
         status.append(event_info['statu'])
+    if request.method == 'POST':
+        for (event_id, task_id) in zip(ids, task_ids):
+            if request.form.get(str(event_id), None):
+                check_event(session['username'], event_id)
+                return redirect(url_for('task_page', task_id=task_id))
+        if request.form.get('all', None):
+            for (event_id, task_id, statu) in zip(ids, task_ids, status):
+                if statu:
+                    check_event(session['username'], event_id)
+            return redirect(url_for('events_page'))
     return render_template('events.html', num_unchecked=ms['num_unchecked'], num_total=len(ids),
                            ids=ids, task_ids=task_ids, task_titles=task_titles, acts=acts,
                            dates=dates, status=status)
@@ -241,7 +266,6 @@ def new_task_page():
                 return render_template('new_task.html', error=error, tags=tagnames)
             end_date = error
             now = int(datetime.now().timestamp())
-            print(public_date, end_date, now)
             # if public_date < now:
             #     error = "You need enter a public date after NOW"
             if end_date < public_date:
@@ -374,10 +398,17 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('welcome_page'))
 
+def eva_run():
+    now_time_events()
+    print("Raised All Events...")
+    threading.Timer(CHECK_SPACE, eva_run).start()
+    
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'renew':
         os.system("rm *.db")
         init_db()
     else:
         app.debug = True
+        # eva_run()
+        # g.user = None
         app.run()

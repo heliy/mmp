@@ -13,7 +13,7 @@
     <td>{{acts[i]}}</td><td>{{dates[i]}}</td><td>
     {% if status[i] %}
     <form action="" method="post">
-      <div class="actions"><input type="submit" name="{{task_ids[i]}}" value="Check"></div>
+      <div class="actions"><input type="submit" name="{{ids[i]}}" value="Check"></div>
     </form>    
     {% else %}
     CHECKED
@@ -22,4 +22,7 @@
   </tr>
   {% endfor %}
 </table>
+    <form action="" method="post">
+      <div class="actions"><input type="submit" name="all" value="Check ALL"></div>
+    </form>    
 {% endblock %}
