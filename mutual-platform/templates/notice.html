@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block title %}New Notice{% endblock %}
+{% block content %}
+<h2>Notice: {{title}}</h2>
+{{info}}
+<br>
+<br>
+<li>Poster: <a href="{{url_for('people_page', username=postser)}}">{{poster}}</a></li>
+<li>Post Date: {{date}}</li>
+{% endblock %}

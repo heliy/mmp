@@ -3,6 +3,7 @@
 {% block content %}
 <h2>All Tasks:</h2>
 <br>
+{% if num > 0 %}
 <table>
   <tr><td>Task_ID</td><td>Title<td><td>Poster</td><td>Post Date</td><td>Statu</td></tr>
   {% for i in range(num) %}
@@ -13,4 +14,5 @@
   </tr>
   {% endfor %}
 </table>
+{% endif %}
 {% endblock %}

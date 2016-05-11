@@ -24,9 +24,10 @@
 	  <input type="text" name="end_min" size="2">(min).
 	</dt>
 	<dt>Select Tags:
-	  <dd><select multiple cols=5>
-	      {% for tag in tags %}
-	      <option value="{{tag['tagname']}}">{{tag[tagname]}}</option>
+	  <dd><select multiple name="tags" cols=5>
+	      {% for tag in tagnames %}
+	      {{tag}}
+	      <option value="{{tag}}">{{tag}}</option>
 	      {% endfor %}
 	      </select>
 	</dt>

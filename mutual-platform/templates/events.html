@@ -4,6 +4,7 @@
 <h2>All Events:</h2>
 <h3>You have {{num_unchecked}} events to check</h3>
 <br>
+{% if num_total > 0 %}
 <table>
   <tr><td>Event_ID</td><td>Task<td><td>Act</td><td>Raised Date</td><td>Statu</td></tr>
   {% for i in range(num_total) %}
@@ -24,5 +25,6 @@
 </table>
     <form action="" method="post">
       <div class="actions"><input type="submit" name="all" value="Check ALL"></div>
-    </form>    
+    </form>
+{% endif %}
 {% endblock %}

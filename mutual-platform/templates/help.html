@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}Help{% endblock %}
+{% block content %}
+<h2>ABOUT</h2>
+MMP is a mutual platform for students and staffs in school.<br>
+For users in this platform, you can post your tasks and others will help you.<br>
+And, if you is a staff, you can post a notice to all students in this platform.<br>
+<br>
+<h2>USEAGE</h2>
+<h3>Register</h3>
+There are there steps for you to register a account.<br>
+1. Input your phone number<br>
+2. Valid your phone number<br>
+3. Complete your account information<br>
+<br>
+You have to enter unique username, your staudent number and your address.<br>
+Least but not last, Your password.<br>
+<br>
+You MUST remember your <strong>phone number and password</strong> to sign in.<br>
+
+<h3>Task & Tag</h3>
+<strong>Tasks</strong> in this platform is arranged by <strong>Tags</strong>.<br>
+So, if you want to post your task in some topic, please make sure you choose the related tags.<br>
+Of course, you can create new tag.<br>
+<br>
+For post a task, you have to enter the title and describtions about it.<br>
+Besides Tags, you also need enter the <strong>deadline</strong> of your task.<br>
+If the user who help you are not complete task before deadline, this task would FAILED.<br>
+Moreover, if it have not received by anyone, this task will be CLOSED.<br>
+<br>
+If you want to receive the task post by others,<br>
+you can hit the 'Receive' submit under the task before another person get that task.<br>
+After receive the task, and complete that task, you should hit the 'Complete' submit.<br>
+Or, if you want to abort the task, you also should hit the 'Abort' submit.<br>
+<br>
+If the task is complete, or aborted by helper, or just pass the deadline,<br>
+the task will not order other actions except commit the users each other.<br>
+You need mark a score between 0 and 5 to your partner.<br>
+And average of those scores will be the score you get, and be showed in your homepage.<br>
+<br>
+If you is a staff and need post a notice, you need click the 'Post Notice' in index page.<br>
+<h3>Show</h3>
+Under different tags, the tasks will be showed by create date.<br>
+Also there will be other specifiec show page.<br>
+<li><strong>Urgent</strong> Tasks show the tasks that have not received by anyone and have less 6 hours before deadline.</li>
+<li><strong>Recent</strong> Tasks show the tasks that active in one day.</li>
+<li><strong>Popular</strong> Tasks show the tasks that hit most by users.</li>
+
+{% endblock %}

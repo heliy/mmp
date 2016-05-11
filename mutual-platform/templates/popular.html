@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}Popular Tasks{% endblock %}
+{% block content %}
+<h2>Popular Activate Tasks</h2>
+<table>
+
+<tr><td>Task ID</td><td>Task</td><td>Poster</td><td>Statu</td><td>End Date</td><td>#Hits</td></tr>
+  
+{% for i in range(num) %}
+<tr><td>{{ids[i]}}</td>
+    <td><a href="{{url_for('task_page', task_id=ids[i])}}">{{titles[i]}}</a></td>
+    <td><a href="{{url_for('people_page', username=posters[i])}}">{{posters[i]}}</a></td>
+    <td>{{status[i]}}</td><td>{{ends[i]}}</td><td>{{hits[i]}}</td></tr>
+{% endfor %}
+
+</table>
+{% endblock %}

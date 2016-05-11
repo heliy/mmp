@@ -22,24 +22,28 @@ __all__ = [
     'log_in',
     'new_tag',
     'new_task',
-    'mark_task',
+    'new_notice',
+    'commit_task',
     'receive_task',
     'complete_task',
     'abort_task',
     'check_event',
     'now_time_events',
+    'check_notices',
+    'hit_task',
     
     # GET
     'welcome',
     'account',
     'task_info',
     'tag_info',
-    # 'notice_info',
+    'notice_info',
     'user_tasks',
-    # 'peoples',
     'tasks',
-    # 'notices',
-    # 'urgents',
+    'notices',
+    'urgents',
+    'recents',
+    'populars',
     'tags',
     'events',
     ]
@@ -61,7 +65,7 @@ def add_tag_pool(tag):
     tag_pool[tag.tagname] = tag
 
 def add_notice_pool(notice):
-    notice_pool[notic.notice_id] = notice
+    notice_pool[notice.notice_id] = notice
 
 def get_user(value, is_id=True):
     if value in user_pool:
@@ -189,17 +193,22 @@ class User(object):
         self.update_db()
 
     def check_event(self, event):
-        event.statu = CHECKED
-        event.update_db()
+        event.check()
         self.raised_events -= 1
         self.update_db()
                 
     def participate_tasks(self, statu):
         ''' get tasks user participate '''
-        rv = query_db('''select task_id from tasks where helper = ? and statu = ?
-                         order by task_id desc''', [self.user_id, statu])
+        rv = query_db('''select task_id from tasks where helper = ? and closed_statu = ?
+                         and is_closed = ? order by task_id desc''', [self.user_id, statu, OPEN])
         for task_id in rv:
             yield get_task(task_id[0])
+
+    def participate_closed_tasks(self):
+        rv = query_db('''select task_id from tasks where helper = ? and is_closed = ?
+                         order by task_id desc''', [self.user_id, CLOSED])
+        for task_id in rv:
+            yield get_task(task_id[0])        
 
     def all_events(self):
         rv = query_db('''select event_id from events where user_id = ?
@@ -214,42 +223,41 @@ class User(object):
                 yield event
 
     def complete_task(self, task):
-        task.statu = COMPLETE
+        task.closed_statu = COMPLETE
         task.update_db()
         event = Event(user_id=task.poster().user_id, task_id=task.task_id, act=COMPLETE)
 
     def commit_task(self, task, score):
-        task.score = score
-        task.statu = CLOSED
+        if self.user_id == task.poster().user_id:
+            task.helper_score = score
+            event = Event(user_id=task.helper().user_id, task_id=task.task_id, act=COMMIT)
+        else:
+            task.poster_score = score
+            event = Event(user_id=task.poster().user_id, task_id=task.task_id, act=COMMIT)
+        if task.poster_score > 0 and task.helper_score > 0:
+            task.close()
+        print(task.poster_score, task.helper_score, task.is_closed)
         task.update_db()
-        event = Event(user_id=task.helper().user_id, task_id=task.task_id, act=CLOSED)
 
     def abort_task(self, task):
-        task.statu = ABORT
-        task.score = BATSU
+        task.closed_statu = ABORT
         task.update_db()
-        event = Event(user_id=self.user_id, task_id=task.task_id, act=ABORT)
         event = Event(user_id=task.poster().user_id, task_id=task.task_id, act=ABORT)
-
-    def need_commit(self):
-        for task in self.created_tasks():
-            if task.statu == COMPLETE:
-                yield task
 
     def mark(self):
         scores = []
-        for task in self.participate_tasks(CLOSED):
-            scores.append(task.score)
-        for task in self.participate_tasks(FAILED):
-            scores.append(task.score)
-        for task in self.participate_tasks(ABORT):
-            scores.append(task.score)
+        for task in self.participate_closed_tasks():
+            scores.append(task.helper_score)
+        for task in self.created_tasks():
+            scores.append(task.poster_score)
+        scores = [s for s in scores if s > 0]
         return sum(scores)/len(scores) if len(scores) > 0 else 0
 
     def post_notice(self, title='title', info='info'):
         notice = Notice(user_id=self.user_id, title=title, info=info)
         for user in all_users():
             user.add_notice()
+        return notice
 
     def add_notice(self):
         self.raised_notices += 1
@@ -291,16 +299,18 @@ class Task(object):
         ''' load items from tasks '''
         rv = query_db('''select * from tasks where task_id = ?''', [self.task_id], one=True)
         [_, self.poster_id, self.helper_id, self.create_date, self.title, self.content,
-         self.public_date, self.end_date, self.statu, self.score] = rv
+         self.public_date, self.end_date, self.closed_statu, self.is_closed,
+         self.poster_score, self.helper_score, self.hits] = rv
 
     def update_db(self):
         ''' update items in tasks '''
         db = get_db()
         db.execute('''update tasks set poster = ?, helper = ?, create_date = ?,
-                   title = ?, content = ?, public_date = ?, end_date = ?, statu = ?,
-                   score = ? where task_id = ? ''',
+                   title = ?, content = ?, public_date = ?, end_date = ?, closed_statu = ?,
+                   is_closed = ?, poster_score = ?, helper_score = ?, hits = ? where task_id = ? ''',
                    [self.poster_id, self.helper_id, self.create_date, self.title, self.content,
-                    self.public_date, self.end_date, self.statu, self.statu, self.task_id])
+                    self.public_date, self.end_date, self.closed_statu, self.is_closed,
+                    self.poster_score, self.helper_score, self.hits, self.task_id])
         db.commit()
 
     def delete_db(self):
@@ -309,6 +319,16 @@ class Task(object):
         db.execute('''delete from tasks where task_id = ?''',
                    [self.task_id])
 
+    def add_hit(self):
+        self.hits += 1
+        self.update_db()
+
+    def hit_score(self, now=None):
+        if now is None:
+            now = int(time.time())
+        return self.hits
+        # return 60*float(self.hits)/(now-self.public_date)
+
     def poster(self):
         return get_user(self.poster_id)
     
@@ -316,24 +336,25 @@ class Task(object):
         return get_user(self.helper_id) if self.helper_id >= 0 else None
 
     def now_time(self):
-        if ALREADY == self.statu or RECEIVED == self.statu:
+        if ALREADY == self.closed_statu or RECEIVED == self.closed_statu:
             now = int(time.time())
             if now > self.end_date:
-                self.statu = FAILED
+                self.closed_statu = FAILED
                 event = Event(user_id=self.poster_id, task_id=self.task_id, act=FAILED)
                 if self.helper() is not None:
                     event = Event(user_id=self.helper_id, task_id=self.task_id, act=FAILED)
+                self.close()
                 self.update_db()
 
     def be_received(self, helper):
         self.helper_id = helper.user_id
-        self.statu = RECEIVED
+        self.closed_statu = RECEIVED
         self.update_db()
 
     def tags(self):
         rv = query_db('''select tag_id from ttl where task_id = ?''', [self.task_id])
         for tag_id in rv:
-            yield get_tag(tag_id)
+            yield get_tag(tag_id[0])
 
     def delete_tag(self, tag):
         ttl = TTl(tag, self)
@@ -343,7 +364,14 @@ class Task(object):
         ttl = TTl(tag, self, True)
 
     def statu_str(self):
-        return TASK_STATU_LABELS[self.statu]
+        if self.is_closed:
+            return CLOSED_STR
+        else:
+             return TASK_STATU_LABELS[self.closed_statu]
+         
+    def close(self):
+        self.is_closed = CLOSED
+        self.update_db()
 
 class Tag(object):
     def __init__(self, tag_id=None, tagname=None, creator=None, create=False):
@@ -371,6 +399,7 @@ class Tag(object):
     def load_db(self, value=None, item='tag_id'):
         if value is None:
             value = self.tag_id
+
         
         rv = query_db('select * from tags where %s = ?' % (item),
                       [value], one=True)
@@ -457,7 +486,7 @@ class Event(object):
         db = get_db()
         db.execute('''delete from events where event_id = ?''', [self.event_id])
 
-    def checked(self):
+    def check(self):
         self.statu = CHECKED
         self.update_db()
 
@@ -509,7 +538,7 @@ def all_tags():
         yield get_tag(tag_id[0])
 
 def all_users(user_type=STUDENT):
-    rv = query_db('''select user_id from users where user_type = ? order by score desc''',
+    rv = query_db('''select user_id from users where user_type = ? order by user_id desc''',
                   [user_type])
     for user_id in rv:
         yield get_user(user_id[0])
@@ -517,8 +546,12 @@ def all_users(user_type=STUDENT):
 def all_tasks(statu=None):
     if statu is None:
         rv = query_db('''select task_id from tasks order by task_id desc''')
+    elif statu == CLOSED_STR:
+        rv = query_db('''select task_id from tasks where is_closed = ? order by task_id desc''',
+                      [CLOSED])
     else:
-        rv = query_db('''select task_id from tasks where statu == ? order by task_id desc''', [statu])
+        rv = query_db('''select task_id from tasks where closed_statu == ? order by task_id
+                      desc''', [statu])
     for task_id in rv:
         yield get_task(task_id[0])
 
@@ -532,6 +565,10 @@ def all_events(user_id):
                   [user_id])
     for event_id in rv:
         yield Event(event_id[0])
+
+def phone2user(phone_no):
+    rv = query_db('''select user_id from users where phone_no = ?''', [phone_no], one=True)
+    return get_user(rv[0])
 
 # ------------ VALID ----------------------------------
 
@@ -576,11 +613,11 @@ def register_user(user_id, username, user_type, phone_no, address, password):
     add_user_pool(user)
     return account(user.user_id)
 
-def log_in(username, pw):
-    if have_username(username):
-        user = get_user(username, False)
+def log_in(phone_no, pw):
+    if have_phone(phone_no):
+        user = phone2user(phone_no)
         if user.check_password(pw):
-            return 1                      # success
+            return account(user.user_id)  # success
         else:
             return 0                      # incorrect password
     return -1                             # have not registered
@@ -595,7 +632,7 @@ def new_task(username, title, content, public_date, end_date, tagnames):
     task = user.post_task(title, content, public_date, end_date, tags)
     return task_info(task.task_id)
 
-def mark_task(username, task_id, mark):
+def commit_task(username, task_id, mark):
     user = get_user(username, False)
     task = get_task(task_id)
     user.commit_task(task, mark)
@@ -615,18 +652,30 @@ def abort_task(username, task_id):
     task = get_task(task_id)
     user.abort_task(task)
 
-def new_notice(task_id):
-    pass
+def new_notice(username, title, info):
+    user = get_user(username, False)
+    notice = user.post_notice(title, info)
+    return notice_info(notice.notice_id)
 
 def check_event(username, event_id):
     user = get_user(username, False)
     event = Event(event_id)
-    user.check_event(event)
+    if event.statu == RAISED:
+        user.check_event(event)
+
+def check_notices(username):
+    user = get_user(username, False)
+    user.check_notices()
 
 def now_time_events():
     for user in all_users():
         for event in all_events(user.user_id):
             event.now_time()
+
+def hit_task(task_id):
+    task = get_task(task_id)
+    if task.is_closed == OPEN:
+        task.add_hit()
 
 # ------------- GET --------------------------------------
 
@@ -652,7 +701,6 @@ def account(username):
 def task_info(task_id):
     messages = {}
     task = get_task(task_id)
-    task.now_time()
     messages['task_id'] = task.task_id
     messages['poster'] = task.poster().username
     if task.helper():
@@ -662,9 +710,11 @@ def task_info(task_id):
     messages['content'] = task.content
     messages['public_date'] = task.public_date
     messages['end_date'] = task.end_date
-    messages['statu'] = task.statu
-    messages['statu_str'] = task.statu_str()
-    messages['score'] = task.score
+    messages['statu'] = task.statu_str()
+    messages['poster_score'] = task.poster_score
+    messages['helper_score'] = task.helper_score    
+    messages['tags'] = [tag.tagname for tag in task.tags()]
+    messages['hits'] = task.hit_score()
     return messages
 
 def tag_info(tagname):
@@ -674,14 +724,14 @@ def tag_info(tagname):
     messages['tagname'] = tag.tagname
     messages['creator'] = account(tag.creator().username)
     messages['init_time'] = tag.init_time
-    messages['tasks'] = [task_id for task in tag.tasks()]
+    messages['tasks'] = [task.task_id for task in tag.tasks()]
     return messages
 
 def notice_info(notice_id):
     messages = {}
     notice = get_notice(notice_id)
     messages['notice_id'] = notice.notice_id
-    messages['poster'] = account(notice.poster().usrename())
+    messages['poster'] = account(notice.poster().username)
     messages['post_date'] = notice.created_date
     messages['title'] = notice.title
     messages['info'] = notice.info
@@ -702,11 +752,11 @@ def user_tasks(username):
     user = get_user(username, False)
     messages = {}
     messages[CREATE] = [task_info(task.task_id) for task in user.created_tasks()]
-    messages[RECEIVED] = [task_info(task.task_id) for task in user.participate_tasks(RECEIVED)]
-    messages[COMPLETE] = [task_info(task.task_id) for task in user.participate_tasks(COMPLETE)]
-    messages[CLOSED] = [task_info(task.task_id) for task in user.participate_tasks(CLOSED)]
-    messages[FAILED] = [task_info(task.task_id) for task in user.participate_tasks(FAILED)]
-    messages[ABORT] = [task_info(task.task_id) for task in user.participate_tasks(ABORT)]
+    messages[CLOSED_STR] = [task_info(task.task_id) for task in user.participate_tasks(CLOSED_STR)]
+    messages[RECEIVED_STR] = [task_info(task.task_id) for task in user.participate_tasks(RECEIVED)]
+    messages[COMPLETE_STR] = [task_info(task.task_id) for task in user.participate_tasks(COMPLETE)]
+    messages[FAILED_STR] = [task_info(task.task_id) for task in user.participate_tasks(FAILED)]
+    messages[ABORT_STR] = [task_info(task.task_id) for task in user.participate_tasks(ABORT)]
     return messages
 
 def peoples():
@@ -724,19 +774,36 @@ def notices():
     messages = []
     for notice in all_notices():
         messages.append(notice_info(notice.notice_id))
-    return {"notice": messages}
+    return {"notices": messages}
 
 def urgents(time_scale):
     messages = []
     t = int(time.time())+time_scale
-    rv = query_db('''select task_id from tasks where statu = ALREADY and end_time < ?
-                     order by end_time''', [t])
+    rv = query_db('''select task_id from tasks where closed_statu = ? and end_date < ?
+                     order by end_date''', [ALREADY, t])
     for task_id in rv:
         messages.append(task_info(task_id[0]))
     return {"urgents": messages}
 
-def popular(limit):
-    pass
+def recents(time_scale):
+    messages = []
+    t = int(time.time())-time_scale
+    rv = query_db('''select task_id from events where init_date > ?''', [t])
+    for task_id in list(set([id[0] for id in rv])):
+        messages.append(task_info(task_id))
+    return {"recents": messages}    
+
+def populars():
+    messages = []
+    t = int(time.time())
+    rv = query_db('''select task_id from tasks where is_closed = ? ''', [OPEN])
+    tasks = [get_task(r[0]) for r in rv]
+    def rank_key(x):
+        return x.hit_score(t)
+    tasks.sort(key=rank_key, reverse=True)
+    for task in tasks:
+        messages.append(task_info(task.task_id))
+    return {'populars':messages}
 
 def tags():
     messages = []

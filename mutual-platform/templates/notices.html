@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Notices{% endblock %}
+{% block content %}
+
+{% for i in range(num) %}
+
+<table><tr><td>{{notice_ids[i]}}</td><td>Poster: <a href="{{url_for('people_page', username=posters[i])}}">{{posters[i]}}</a></td><td>{{dates[i]}}</td></tr></table>
+<Strong>Notice: {{titles[i]}}</strong>
+<br>
+Information:<br>
+{{infos[i]}}
+<br>
+<br>
+<br>
+{% endfor %}
+{% endblock %}

@@ -1,18 +1,17 @@
 {% extends "layout.html" %}
-{% block title %}Urgent Tasks{% endblock %}
+{% block title %}Recent Tasks{% endblock %}
 {% block content %}
-<h2>Urgent Tasks that Have NOT recievied by anybody</h2>
-<h3>Have less 6 hours before End Date</h3>
+<h2>Recent Activate Tasks</h2>
 
 <table>
 
-<tr><td>Task ID</td><td>Task</td><td>Poster</td><td>End Date</td></tr>
+<tr><td>Task ID</td><td>Task</td><td>Poster</td><td>Statu</td><td>End Date</td></tr>
   
 {% for i in range(num) %}
 <tr><td>{{ids[i]}}</td>
     <td><a href="{{url_for('task_page', task_id=ids[i])}}">{{titles[i]}}</a></td>
     <td><a href="{{url_for('people_page', username=posters[i])}}">{{posters[i]}}</a></td>
-    <td>{{ends[i]}}</td></tr>
+    <td>{{status[i]}}</td><td>{{ends[i]}}</td></tr>
 {% endfor %}
 
 </table>

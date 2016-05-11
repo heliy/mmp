@@ -8,6 +8,7 @@
     <a href="{{ url_for('welcome_page') }}">Welcome</a> |
     <a href="{{ url_for('people_page', username=g.user) }}">Homepage</a> |
     <a href="{{ url_for('new_task_page') }}">Post Task</a> |
+    <a href="{{ url_for('all_tags_page') }}">ALL Tags</a> |
     <a href="{{ url_for('logout') }}">Sign Out</a>|
   {% else %}
     <a href="{{ url_for('register_phone') }}">Sign Up</a> |

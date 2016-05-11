@@ -6,6 +6,7 @@
 <h3>{{title}}</h3>
 {{content}}
 <br>
+  {% if error %}<div class="error"><strong>Error:</strong> {{ error }}</div>{% endif %}
 <br>
 <li>Poster: <a href="{{url_for('people_page', username=poster)}}">{{poster}}</a></li>
 {% if helper %}
@@ -13,65 +14,68 @@
 {% endif %}
 <li>Post Date: {{create_date}}</li>
 <li>End Date: {{end_date}}</li>
-<li>Statu: {{statu_str}}</li>
-{% if score != 0 %}<li>Score: {{score}} </li>{% endif %}
+<li>Statu: {{statu}}</li>
+<li>Poster Score: {% if poster_score > 0 %} {{poster_score}} {% else %} - {% endif %}</li>
+<li>Helper Score: {% if helper_score > 0 %} {{helper_score}} {% else %} - {% endif %}</li>
+<br>
+<strong>tags</strong><br>
+{% for tag in tags %}
+<li><a href="{{url_for('tag_info_page', tagname=tag)}}">{{tag}}</a></li>
+{% endfor %}
 <br>
 
 {% if poster == username %}
-  {% if statu_str == "ALREADY" %}
-<li>Your task is still not received by other T.T</li>
-  {% elif statu_str == "RECIEVED" %}
-<li>Your task have been received by {{helper}} >.<</li>
-  {% elif statu_str == "COMPLETE" %}
+  {% if statu == "ALREADY" %}
+  <li>Your task is still not received by other T.T</li>
+  {% elif statu == "RECIEVED" %}
+  <li>Your task have been received by {{helper}} >.<</li>
+  {% elif statu == "COMPLETE" or statu == "FAILED" or statu == "ABORT"%}
+    {% if statu == "FAILED"%}
+    <li>{{helper}} have not complete your task before end date</li>
+    {% elif statu == "ABORT" %}
+    <li>Your task have been aborted by {{helper}} T.T</li>
+    {% endif %}
+    {% if helper_score < 0 %}
   <form action="" method="post">
-      <dt>{{hepler}} complete your task, you need mark it: 0 <
+      <dt>You need mark {{helper}}: 0 <
 	<input type="text" name="mark" size="3"> <= 5
 	</dt>
     <div class="actions"><input type="submit" value="Submit"></div>
   </form>
-  {% elif statu_str == "CLOSED" %}
-<li>Your task have closed, and you give {{score}} to {{helper}}</li>
-  {% elif statu_str == "FAILED" %}
-<li>Your task have not completed before end date
-    {% if helper %}
-    , and system give {{BATSU}} to {{helper}}
-    {% else %}
-    , this task have not recieved by anyone.
-    {% endif %}
-</li>
-  {% elif statu_str == "ABORT" %}
-<li>Your task have been aborted by {{helper}} T.T</li>
   {% endif %}
-
+  {% endif %}
 {% elif not helper %}
-  {% if statu_str == "ALREADY" %}
+  {% if statu == "ALREADY" %}
   <form action="" method="post">Want to receive this task?
-    <div class="actions"><input type="submit" name="submit" value="Yes"></div>
+    <div class="actions"><input type="submit" name="receive" value="Yes"></div>
   </form>
   {% else %}
 <li>This Task Have Been Closed !</li>
   {% endif %}
 
 {% elif helper == username %}
-  {% if statu_str == "RECEIVED" %}
+  {% if statu == "RECEIVED" %}
   <form action="" method="post">
-    <dt>Have Complete it ? or Want to Abort that task?
-    <div class="actions"><input type="submit" name="complete" value="Complete"></div>
+    <dt>Have Complete it ? 
+      <dt>or Want to Abort that task?
+      <div class="actions"><input type="submit" name="complete" value="Complete"></div>
     <div class="actions"><input type="submit" name="abort" value="Abort"></div>
 	</dt>
   </form>
-  {% elif statu_str == "COMPLETE" %}
-<li>Wait for commit from poster >.< </li>
-  {% elif statu_str == "CLOSED" %}
-<li>You have complete this task ~ and got {{score}} points ~ </li>
-  {% elif statu_str == "FAILED" %}
-<li>You have not complete this task before end date, and got {{score}} points T.T <li>  
-  {% elif statu_str == "ABORT" %}
-<li>You ABORT complete this task, and got {{score}} points ~.~ <li>  
+  {% elif statu == "COMPLETE" or statu == "FAILED" or statu == "ABORT"%}
+    {% if statu == "FAILED" %}
+    <li>You have not complete this task before end date T.T <li>  
+    {% elif statu_str == "ABORT" %}
+    <li>You ABORT complete this task ~.~ <li>
   {% endif %}
-{% else %}
-  {% if statu_str == "ALREADY" %}
-  {% else %}
+  {% if poster_score < 0 %}
+  <form action="" method="post">
+      <dt>You need mark {{posterer}}: 0 <
+	<input type="text" name="mark" size="3"> <= 5
+	</dt>
+    <div class="actions"><input type="submit" value="Submit"></div>
+  </form>
+  {% endif %}
   {% endif %}
 {% endif %}
 

@@ -3,10 +3,14 @@
 {% block content %}
 <h2>All Tags:</h2>
 <br>
+{% if num > 0 %}
 <table>
   <tr><td>Tag_ID</td><td>Tag Name<td></tr>
   {% for i in range(num) %}
-  <td>{{ids[i]}}</td><td><a href="{{url_for('tag_info_page', tagname=names[i])}}">{{names[i]}}</td>
+  <tr><td>{{ids[i]}}</td>
+    <td><a href="{{url_for('tag_info_page', tagname=names[i])}}">{{names[i]}}</td>
+  </tr>
   {% endfor %}
 </table>
+{% endif %}
 {% endblock %}

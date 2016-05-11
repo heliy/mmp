@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}New Notice{% endblock %}
+{% block content %}
+<h2>New Notice</h2>
+  {% if error %}<div class="error"><strong>Error:</strong> {{ error }}</div>{% endif %}
+<form action="" method="post">
+        <dt>Notice Title:
+	  <br><input type="text" name="title" size="30">
+	    <dt>Notice Information:
+	      <br>
+	  <textarea name="info" cols=40 rows=4></textarea>
+	    <div class="actions"><input type="submit" value="Submit"></div>
+</form>
+<br>
+{% endblock %}

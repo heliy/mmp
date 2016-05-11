@@ -23,8 +23,11 @@ create table tasks (
     content text default "empty",
     public_date integer default -1,
     end_date integer default -1,
-    statu integer default 0,
-    score float default 0.
+    closed_statu integer default 0,
+    is_closed integer default 0,
+    poster_score float default -1.,
+    helper_score float default -1.,
+    hits integer default 0
 );
 
 drop table if exists tags;

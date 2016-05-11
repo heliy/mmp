@@ -2,28 +2,51 @@
 {% block title %}{{username}}{% endblock %}
 {% block content %}
 <h2>Accounts</h2>
-<li>name: {{username}}</li>
-<li>type: {{usertype}}</li>
-<li>address: {{address}}</li>
-<li>score: {{score}}</li>
+<li>Name: {{username}}</li>
+<li>Type: {{usertype}}</li>
+<li>Address: {{address}}</li>
+<li>Phone: {{phone}}</li>
+<li>Score: {{score}}</li>
 
+{% if num_create > 0 %}
 <h3>Post Tasks</h3>
 <table>
-  <tr><td>Task ID</td><td>Title</td><td>Post Date</td><td>Statu</td></tr>
+  <tr><td>Task ID</td><td>Title</td><td>Post Date</td><td>Statu</td><td>Score</td></tr>
   {% for i in range(num_create) %}
   <tr><td>{{create_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=create_ids[i])}}">
-      {{create_titles[i]}}</a></td><td>{{create_dates[i]}}</td><td>{{create_status[i]}}</td>
+	{{create_titles[i]}}</a></td><td>{{create_dates[i]}}</td><td>{{create_status[i]}}</td>
+    {% if create_scores[i] > 0 %}
+    <td>{{create_scores[i]}}</td>
+    {% else %}
+    <td> - </td>
+    {% endif %}
   </tr>
   {% endfor %}
 </table>
+{% endif %}
 
-<h3>Participate Tasks</h3>
+{% if num_now > 0 %}
+<h3>NOW Participate Tasks</h3>
 <table>
   <tr><td>Task ID</td><td>Title</td><td>Statu</td></tr>
-  {% for i in range(num_participate) %}
-  <tr><td>{{participate_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=participate_ids[i])}}">
-      {{participate_titles[i]}}</a></td><td>{{participate_status[i]}}</td>
+  {% for i in range(num_now) %}
+  <tr><td>{{now_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=now_ids[i])}}">
+      {{now_titles[i]}}</a></td><td>{{now_status[i]}}</td>
   </tr>
   {% endfor %}
 </table>
+{% endif %}
+
+{% if num_now > 0 %}
+<h3>CLOSED Participate Tasks</h3>
+<table>
+  <tr><td>Task ID</td><td>Title</td><td>Score</td></tr>
+  {% for i in range(num_now) %}
+  <tr><td>{{closed_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=closed_ids[i])}}">
+      {{closed_titles[i]}}</a></td><td>{{closed_scores[i]}}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
 {% endblock %}

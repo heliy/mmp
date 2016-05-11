@@ -4,7 +4,11 @@
   <h2>Welcome {{ username }}</h2>
   <li><a href="{{ url_for('notices_page') }}">You have <strong>{{ notice }}</strong> notices</a></li>
   <li><a href="{{ url_for('events_page') }}">You have <strong>{{ event }}</strong> events</a></li>
+  <br>
 
+  <li><a href="{{ url_for('new_task_page') }}">Post Task</a></li>
+  <li><a href="{{ url_for('new_tag_page') }}">New Tag</a></li>  
+{% if is_staff %}<li><a href="{{url_for('new_notice_page')}}">Post Notice</a></li> {% endif %}
   <br>
   <li><a href="{{ url_for('people_page', username=username)}}">Your Homepage</a></li>
 
@@ -16,11 +20,7 @@
   <li><a href="{{ url_for('all_tasks_page')}}">All Tasks</a></li>
   <li><a href="{{ url_for('all_tags_page')}}">All Tags</a></li>
   <br>
-  <li><a href="{{ url_for('new_task_page') }}">New Task</a></li>
-  <li><a href="{{ url_for('new_tag_page') }}">New Tag</a></li>  
-
-  <br>
-  <li><a href="{{ url_for('logout')}}">Log Out</a></li>
+  <li><a href="{{ url_for('logout')}}">Sign Out</a></li>
   <br>
 
 {% endblock %}
