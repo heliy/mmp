@@ -130,7 +130,6 @@ def task_page(task_id):
     helper_score = ms.get('helper_score')
     tagnames = ms.get('tags')
     hit_task(task_id)
-    print(tagnames)
     if request.method == 'POST':
         if session['username'] == poster:
             if not request.form['mark']:
@@ -212,17 +211,18 @@ def events_page():
         task_ids.append(event_info['task']['task_id'])
         task_titles.append(event_info['task']['title'])
         acts.append(TASK_STATU_LABELS[event_info['act']])
+        # print(event_info['act'], acts[-1], acts)
         dates.append(format_datetime(event_info['raised_date']))
         status.append(event_info['statu'])
     if request.method == 'POST':
         for (event_id, task_id) in zip(ids, task_ids):
             if request.form.get(str(event_id), None):
-                check_event(session['username'], event_id)
+                check_events(session['username'], event_id, False)
                 return redirect(url_for('task_page', task_id=task_id))
         if request.form.get('all', None):
             for (event_id, task_id, statu) in zip(ids, task_ids, status):
                 if statu:
-                    check_event(session['username'], event_id)
+                    check_events(session['username'], task_id)
             return redirect(url_for('events_page'))
     return render_template('events.html', num_unchecked=ms['num_unchecked'], num_total=len(ids),
                            ids=ids, task_ids=task_ids, task_titles=task_titles, acts=acts,
@@ -283,15 +283,18 @@ def tag_info_page(tagname):
     if not g.user:
         return redirect(url_for('welcome_page'))
     ms = tag_info(tagname)
-    task_ids, task_titles, task_status = [], [], []
+    task_ids, task_titles, task_status, task_posters = [], [], [], []
     for task_id in ms['tasks']:
         tms = task_info(task_id)
         task_ids.append(task_id)
         task_titles.append(tms['title'])
         task_status.append(tms['statu'])
+        task_posters.append(tms['poster'])
+    print(task_status)
     return render_template('tag.html', name=ms['tagname'], creater=ms['creator']['username'],
                            init=format_datetime(ms['init_time']), num_task=len(task_ids),
-                           task_ids=task_ids, task_titles=task_titles, task_status=task_status)
+                           task_ids=task_ids, task_titles=task_titles, task_status=task_status,
+                           task_posters=task_posters)
 
 @app.route('/tags')
 def all_tags_page():
@@ -309,32 +312,30 @@ def new_task_page():
         return redirect(url_for('welcome_page'))
     error = None
     tagnames = [t['tagname'] for t in tags()["tags"]]
+    helpers = [t['username'] for t in past_helpers(session['username'])['helpers']]
+    print(helpers)
     if request.method == "POST":
         if not request.form['title']:
             error = "You have to enter the title of task"
         elif not request.form['content']:
             error = "You have to enter the content of task"
         else:
-            # error = date(request.form, "public")
-            # if type(error) == str:
-            #     return render_template('new_task.html', error=error, tags=tagnames)
-            # public_date = error
             public_date = datetime.now().timestamp()
             error = date(request.form, "end")
             if type(error) == str:
                 return render_template('new_task.html', error=error, tags=tagnames)
             end_date = error
             now = int(datetime.now().timestamp())
-            # if public_date < now:
-            #     error = "You need enter a public date after NOW"
             if end_date < public_date:
                 error = "You need enter a end date after public date"
             else:
                 tagnames = request.form.getlist('tags')
+                callnames = request.form.getlist('calls')
                 ms = new_task(session['username'], request.form["title"], request.form['content'],
-                              public_date, end_date, tagnames)
+                              public_date, end_date, tagnames, callnames)
                 return redirect(url_for("task_page", task_id=ms["task_id"]))
-    return render_template('new_task.html', error=error, tags=tags()["tags"], tagnames=tagnames)
+    return render_template('new_task.html', error=error, tags=tags()["tags"], tagnames=tagnames,
+                           calls=helpers)
 
 @app.route('/new/tag', methods=["GET", "POST"])
 def new_tag_page():

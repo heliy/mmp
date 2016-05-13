@@ -12,10 +12,12 @@
 {% if num_task > 0 %}
 <table>
 Tasks in {{name}}:
-<tr><td>Task ID</td><td>Title</td><td>Statu</td></tr>
+<tr><td>Task ID</td><td>Title</td><td>Poster</td><td>Statu</td></tr>
 {% for i in range(num_task) %}
 <tr><td>{{task_ids[i]}}</td><td>
   <a href="{{url_for('task_page', task_id=task_ids[i])}}">{{task_titles[i]}}</a>
+  </td><td>
+  <a href="{{url_for('people_page', username=task_posters[i])}}">{{task_posters[i]}}</a>
   </td><td>{{task_status[i]}}</td>
 </tr>
 {% endfor %}

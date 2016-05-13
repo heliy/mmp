@@ -31,6 +31,13 @@
 	      {% endfor %}
 	      </select>
 	</dt>
+	<dt>Select Recommend Helpers:
+	  <dd><select multiple name="calls" cols=5>
+	      {% for call in calls %}
+	      <option value="{{call}}">{{call}}</option>
+	      {% endfor %}
+	      </select>
+	</dt>
 	    <div class="actions"><input type="submit" value="Submit"></div>
 </form>
 <br>

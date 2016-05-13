@@ -27,7 +27,7 @@ __all__ = [
     'receive_task',
     'complete_task',
     'abort_task',
-    'check_event',
+    'check_events',
     'now_time_events',
     'check_notices',
     'hit_task',
@@ -46,6 +46,7 @@ __all__ = [
     'populars',
     'tags',
     'events',
+    'past_helpers',
     ]
 
 user_pool = {}
@@ -157,7 +158,7 @@ class User(object):
         add_tag_pool(tag)
         return tag
 
-    def post_task(self, title='title', content='content', public_date=None, end_date=None, tags=[]):
+    def post_task(self, title='title', content='content', public_date=None, end_date=None, tags=[], calls=[]):
         if public_date is None:
             public_date = int(time.time())
         if end_date is None:
@@ -170,6 +171,8 @@ class User(object):
         task.update_db()
         ttls = [TTl(tag, task, True) for tag in tags]
         add_task_pool(task)
+        for user in calls:
+            event = Event(user_id=user.user_id, task_id=task.task_id, act=CALL)
         return task
     
     def receive_task(self, task):
@@ -192,9 +195,14 @@ class User(object):
         self.raised_events += 1
         self.update_db()
 
-    def check_event(self, event):
-        event.check()
-        self.raised_events -= 1
+    def check_events(self, task):
+        print(task)
+        rv = query_db('''select event_id from events where user_id = ? and task_id = ?
+                         and statu == ?''', [self.user_id, task.task_id, RAISED])
+        for eid in rv:
+            event = Event(eid[0])
+            event.check()
+            self.raised_events -= 1
         self.update_db()
                 
     def participate_tasks(self, statu):
@@ -246,13 +254,11 @@ class User(object):
         event = Event(user_id=task.poster().user_id, task_id=task.task_id, act=ABORT)
 
     def mark(self):
-        scores = []
-        for task in self.participate_closed_tasks():
-            scores.append(task.helper_score)
-        for task in self.created_tasks():
-            scores.append(task.poster_score)
-        scores = [s for s in scores if s > 0]
-        return sum(scores)/len(scores) if len(scores) > 0 else 0
+        helper_scores = [task.helper_score for task in self.participate_closed_tasks()]
+        poster_scores = [task.poster_score for task in self.created_tasks() if task.poster_score > 0]
+        score = 0.7*(len(helper_scores) == 0 and 4.0 or sum(helper_scores)/len(helper_scores))
+        score += 0.3*(len(poster_scores) == 0 and 4.0 or sum(poster_scores)/len(poster_scores))
+        return score
 
     def post_notice(self, title='title', info='info'):
         notice = Notice(user_id=self.user_id, title=title, info=info)
@@ -426,8 +432,21 @@ class Tag(object):
     def tasks(self):
         rv = query_db('''select task_id from ttl where tag_id = ? order by task_id
                          desc''', [self.tag_id])
-        for task_id in rv:
-            yield get_task(task_id[0])
+        tasks = [get_task(tid[0]) for tid in rv]
+        tasks_dic = {}
+        for task in tasks:
+            date = task.create_date%(24*60*60)
+            if date in tasks_dic:
+                tasks_dic[date].append(task)
+            else:
+                tasks_dic[date] = [task]
+
+        def rank_task(task):
+            return task.poster().mark()
+        
+        for date in sorted(tasks_dic.keys(), reverse=True):
+            for task in sorted(tasks_dic[date], key=rank_task):
+                yield task            
 
 class TTl(object):
     def __init__(self, tag, task, create=False):
@@ -627,10 +646,11 @@ def new_tag(username, tagname):
     user = get_user(username, False)
     user.new_tag(tagname)
 
-def new_task(username, title, content, public_date, end_date, tagnames):
+def new_task(username, title, content, public_date, end_date, tagnames, callnames):
     user = get_user(username, False)
     tags = [get_tag(tagname, False) for tagname in tagnames]
-    task = user.post_task(title, content, public_date, end_date, tags)
+    calls = [get_user(username, False) for username in callnames]
+    task = user.post_task(title, content, public_date, end_date, tags, calls)
     return task_info(task.task_id)
 
 def commit_task(username, task_id, mark):
@@ -658,11 +678,15 @@ def new_notice(username, title, info):
     notice = user.post_notice(title, info)
     return notice_info(notice.notice_id)
 
-def check_event(username, event_id):
+def check_events(username, tid, is_task=True):
     user = get_user(username, False)
-    event = Event(event_id)
-    if event.statu == RAISED:
-        user.check_event(event)
+    if is_task:
+        task = get_task(tid)
+        user.check_events(task)
+    else:
+        event = Event(tid)
+        task = event.task()
+        user.check_events(task)
 
 def check_notices(username):
     user = get_user(username, False)
@@ -822,3 +846,16 @@ def events(username):
     for event in user.all_events():
         messages['events'].append(event_info(event.event_id))
     return messages
+
+def past_helpers(username):
+    messages = []
+    user = get_user(username, False)
+    helpers = set()
+    for task in user.created_tasks():
+        task.helper() is not None and helpers.add(task.helper())
+        
+    def rank_help(helper):
+        return helper.mark()
+    messages = [account(helper.username) for helper in sorted(list(helpers),
+                                                              key=rank_help, reverse=True)]
+    return {"helpers": messages}
