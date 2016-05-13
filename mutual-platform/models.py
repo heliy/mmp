@@ -208,6 +208,7 @@ class User(object):
         rv = query_db('''select task_id from tasks where helper = ? and is_closed = ?
                          order by task_id desc''', [self.user_id, CLOSED])
         for task_id in rv:
+            print(task_id[0])
             yield get_task(task_id[0])        
 
     def all_events(self):
@@ -364,7 +365,7 @@ class Task(object):
         ttl = TTl(tag, self, True)
 
     def statu_str(self):
-        if self.is_closed:
+        if self.is_closed == CLOSED:
             return CLOSED_STR
         else:
              return TASK_STATU_LABELS[self.closed_statu]
@@ -752,11 +753,12 @@ def user_tasks(username):
     user = get_user(username, False)
     messages = {}
     messages[CREATE] = [task_info(task.task_id) for task in user.created_tasks()]
-    messages[CLOSED_STR] = [task_info(task.task_id) for task in user.participate_tasks(CLOSED_STR)]
+    messages[CLOSED_STR] = [task_info(task.task_id) for task in user.participate_closed_tasks()]
     messages[RECEIVED_STR] = [task_info(task.task_id) for task in user.participate_tasks(RECEIVED)]
     messages[COMPLETE_STR] = [task_info(task.task_id) for task in user.participate_tasks(COMPLETE)]
     messages[FAILED_STR] = [task_info(task.task_id) for task in user.participate_tasks(FAILED)]
     messages[ABORT_STR] = [task_info(task.task_id) for task in user.participate_tasks(ABORT)]
+    print(messages)
     return messages
 
 def peoples():
@@ -790,7 +792,8 @@ def recents(time_scale):
     t = int(time.time())-time_scale
     rv = query_db('''select task_id from events where init_date > ?''', [t])
     for task_id in list(set([id[0] for id in rv])):
-        messages.append(task_info(task_id))
+        if get_task(task_id).is_closed == OPEN:
+            messages.append(task_info(task_id))
     return {"recents": messages}    
 
 def populars():

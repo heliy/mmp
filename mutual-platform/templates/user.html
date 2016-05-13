@@ -37,11 +37,11 @@
 </table>
 {% endif %}
 
-{% if num_now > 0 %}
+{% if num_closed > 0 %}
 <h3>CLOSED Participate Tasks</h3>
 <table>
   <tr><td>Task ID</td><td>Title</td><td>Score</td></tr>
-  {% for i in range(num_now) %}
+  {% for i in range(num_closed) %}
   <tr><td>{{closed_ids[i]}}</td><td><a href="{{url_for('task_page', task_id=closed_ids[i])}}">
       {{closed_titles[i]}}</a></td><td>{{closed_scores[i]}}</td>
   </tr>

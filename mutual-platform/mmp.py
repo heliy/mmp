@@ -1,10 +1,10 @@
 #coding:UTF-8
 
 """
-   Micro Mutual Platform (MMP)
+   Micro Mutual Help Platform (MMP)
    ~~~~~~~~~~~~~~~
 
-   A micro mutual platform written with Flask and sqlite3.
+   A micro mutual help platform written with Flask and sqlite3.
 
    :copyright:
    :license:
@@ -91,6 +91,7 @@ def people_page(username):
         now_ids.append(c['task_id'])
         now_titles.append(c['title'])
         now_status.append(c['statu'])
+    print(now_ids, closed_ids, closed_scores)
     return render_template('user.html', me=session['username'], usertype=usertype,
                            username=username, address=address, score=score, phone=phone,
                            num_create=len(create_ids), create_ids=create_ids,
@@ -195,6 +196,7 @@ def all_tasks_page():
         create_dates.append(format_datetime(t['create_date']))
         titles.append(t['title'])
         status.append(t['statu'])
+    print(status)
     return render_template('tasks.html', ids=task_ids, titles=titles, posters=posters,
                            create_dates=create_dates, status=status, num=len(titles))
 
@@ -505,4 +507,4 @@ if __name__ == "__main__":
         app.debug = True
         # eva_run()
         # g.user = None
-        app.run()
+        app.run(host='0.0.0.0', port=5000)
