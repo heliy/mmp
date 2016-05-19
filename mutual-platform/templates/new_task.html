@@ -25,19 +25,21 @@
 	</dt>
 	<dt>Select Tags:
 	  <dd><select multiple name="tags" cols=5>
-	      {% for tag in tagnames %}
+	      {% for tag in tags %}
 	      {{tag}}
 	      <option value="{{tag}}">{{tag}}</option>
 	      {% endfor %}
 	      </select>
+	<!-- </dt> -->
+	<!-- <dt>Select Recommend Helpers: -->
+	<!--   <dd><select multiple name="calls" cols=5> -->
+	<!--       {% for call in calls %} -->
+	<!--       <option value="{{call}}">{{call}}</option> -->
+	<!--       {% endfor %} -->
+	<!--       </select> -->
 	</dt>
-	<dt>Select Recommend Helpers:
-	  <dd><select multiple name="calls" cols=5>
-	      {% for call in calls %}
-	      <option value="{{call}}">{{call}}</option>
-	      {% endfor %}
-	      </select>
-	</dt>
+	<dt>Input Helper's Name or Phone you want to call: 
+	  <dd><input type="text" name="np" size="20">
 	    <div class="actions"><input type="submit" value="Submit"></div>
 </form>
 <br>

@@ -312,8 +312,8 @@ def new_task_page():
         return redirect(url_for('welcome_page'))
     error = None
     tagnames = [t['tagname'] for t in tags()["tags"]]
-    helpers = [t['username'] for t in past_helpers(session['username'])['helpers']]
-    print(helpers)
+    # helpers = [t['username'] for t in past_helpers(session['username'])['helpers']]
+    # print(helpers)
     if request.method == "POST":
         if not request.form['title']:
             error = "You have to enter the title of task"
@@ -325,17 +325,35 @@ def new_task_page():
             if type(error) == str:
                 return render_template('new_task.html', error=error, tags=tagnames)
             end_date = error
+            error = None
             now = int(datetime.now().timestamp())
             if end_date < public_date:
                 error = "You need enter a end date after public date"
             else:
                 tagnames = request.form.getlist('tags')
-                callnames = request.form.getlist('calls')
-                ms = new_task(session['username'], request.form["title"], request.form['content'],
-                              public_date, end_date, tagnames, callnames)
-                return redirect(url_for("task_page", task_id=ms["task_id"]))
-    return render_template('new_task.html', error=error, tags=tags()["tags"], tagnames=tagnames,
-                           calls=helpers)
+                # callnames = request.form.getlist('calls')
+                if request.form['np']:
+                    np = request.form['np']
+                    if not have_username(np):
+                        try:
+                            phone_no = int(np)
+                        except ValueError:
+                            error = "You need input valid phone number"
+                        if error is None:
+                            if not have_phone(phone_no):
+                                error = "You need input valid phone number"
+                            else:
+                                np = phone2name(phone_no)
+                    nps = [np]
+                else:
+                    nps = []
+                print(nps, error)
+                if error is None:
+                    ms = new_task(session['username'], request.form["title"],
+                                  request.form['content'], public_date, end_date,
+                                  tagnames, nps)
+                    return redirect(url_for("task_page", task_id=ms["task_id"]))
+    return render_template('new_task.html', error=error, tags=tagnames)
 
 @app.route('/new/tag', methods=["GET", "POST"])
 def new_tag_page():

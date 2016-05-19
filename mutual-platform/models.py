@@ -33,6 +33,7 @@ __all__ = [
     'hit_task',
     
     # GET
+    'phone2name',
     'welcome',
     'account',
     'task_info',
@@ -711,6 +712,10 @@ def welcome(username):
     messages['event'] = user.raised_events
     messages['usertype'] = user.user_type
     return messages
+
+def phone2name(phone):
+    user = phone2user(phone_no)
+    return user.username
 
 def account(username):
     user = get_user(username, False)
